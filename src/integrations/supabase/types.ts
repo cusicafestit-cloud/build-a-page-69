@@ -14,7 +14,303 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      asistentes: {
+        Row: {
+          ciudad: string | null
+          codigo_ticket: string
+          comentarios: string | null
+          como_se_entero: string | null
+          created_at: string | null
+          documento_identidad: string | null
+          email: string
+          estado: string | null
+          evento_id: string
+          fecha_check_in: string | null
+          fecha_nacimiento: string | null
+          fecha_registro: string | null
+          genero: string | null
+          id: string
+          metadata: Json | null
+          nombre: string
+          telefono: string | null
+          tipo_ticket_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          ciudad?: string | null
+          codigo_ticket: string
+          comentarios?: string | null
+          como_se_entero?: string | null
+          created_at?: string | null
+          documento_identidad?: string | null
+          email: string
+          estado?: string | null
+          evento_id: string
+          fecha_check_in?: string | null
+          fecha_nacimiento?: string | null
+          fecha_registro?: string | null
+          genero?: string | null
+          id?: string
+          metadata?: Json | null
+          nombre: string
+          telefono?: string | null
+          tipo_ticket_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          ciudad?: string | null
+          codigo_ticket?: string
+          comentarios?: string | null
+          como_se_entero?: string | null
+          created_at?: string | null
+          documento_identidad?: string | null
+          email?: string
+          estado?: string | null
+          evento_id?: string
+          fecha_check_in?: string | null
+          fecha_nacimiento?: string | null
+          fecha_registro?: string | null
+          genero?: string | null
+          id?: string
+          metadata?: Json | null
+          nombre?: string
+          telefono?: string | null
+          tipo_ticket_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asistentes_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asistentes_tipo_ticket_id_fkey"
+            columns: ["tipo_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canjes: {
+        Row: {
+          apellido_asistente: string | null
+          asistente_id: string
+          cantidad: number | null
+          created_at: string | null
+          diferencia_precio: number | null
+          estado: string | null
+          evento_destino_id: string
+          evento_original_id: string
+          evento_tp_id: string | null
+          fecha_procesado: string | null
+          fecha_solicitud: string | null
+          id: string
+          metodo_pago_diferencia: string | null
+          motivo: string | null
+          nombre_asistente: string | null
+          notas_admin: string | null
+          procesado_por: string | null
+          ticket_tp_id: string | null
+          tipo_ticket_destino_id: string
+          tipo_ticket_original_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          apellido_asistente?: string | null
+          asistente_id: string
+          cantidad?: number | null
+          created_at?: string | null
+          diferencia_precio?: number | null
+          estado?: string | null
+          evento_destino_id: string
+          evento_original_id: string
+          evento_tp_id?: string | null
+          fecha_procesado?: string | null
+          fecha_solicitud?: string | null
+          id?: string
+          metodo_pago_diferencia?: string | null
+          motivo?: string | null
+          nombre_asistente?: string | null
+          notas_admin?: string | null
+          procesado_por?: string | null
+          ticket_tp_id?: string | null
+          tipo_ticket_destino_id: string
+          tipo_ticket_original_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          apellido_asistente?: string | null
+          asistente_id?: string
+          cantidad?: number | null
+          created_at?: string | null
+          diferencia_precio?: number | null
+          estado?: string | null
+          evento_destino_id?: string
+          evento_original_id?: string
+          evento_tp_id?: string | null
+          fecha_procesado?: string | null
+          fecha_solicitud?: string | null
+          id?: string
+          metodo_pago_diferencia?: string | null
+          motivo?: string | null
+          nombre_asistente?: string | null
+          notas_admin?: string | null
+          procesado_por?: string | null
+          ticket_tp_id?: string | null
+          tipo_ticket_destino_id?: string
+          tipo_ticket_original_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canjes_asistente_id_fkey"
+            columns: ["asistente_id"]
+            isOneToOne: false
+            referencedRelation: "asistentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canjes_evento_destino_id_fkey"
+            columns: ["evento_destino_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canjes_evento_original_id_fkey"
+            columns: ["evento_original_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canjes_procesado_por_fkey"
+            columns: ["procesado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios_sistema"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canjes_tipo_ticket_destino_id_fkey"
+            columns: ["tipo_ticket_destino_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canjes_tipo_ticket_original_id_fkey"
+            columns: ["tipo_ticket_original_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos: {
+        Row: {
+          capacidad: number | null
+          categoria: string | null
+          created_at: string | null
+          descripcion: string | null
+          estado: string | null
+          fecha: string
+          id: string
+          imagen_url: string | null
+          metadata: Json | null
+          nombre: string
+          precio_base: number | null
+          tp_id: string | null
+          ubicacion: string | null
+          updated_at: string | null
+          venue: string | null
+        }
+        Insert: {
+          capacidad?: number | null
+          categoria?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          estado?: string | null
+          fecha: string
+          id?: string
+          imagen_url?: string | null
+          metadata?: Json | null
+          nombre: string
+          precio_base?: number | null
+          tp_id?: string | null
+          ubicacion?: string | null
+          updated_at?: string | null
+          venue?: string | null
+        }
+        Update: {
+          capacidad?: number | null
+          categoria?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          estado?: string | null
+          fecha?: string
+          id?: string
+          imagen_url?: string | null
+          metadata?: Json | null
+          nombre?: string
+          precio_base?: number | null
+          tp_id?: string | null
+          ubicacion?: string | null
+          updated_at?: string | null
+          venue?: string | null
+        }
+        Relationships: []
+      }
+      tipos_tickets: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          descripcion: string | null
+          evento_id: string | null
+          id: string
+          maximo_canjes: number | null
+          tipo: string
+          precio: number | null
+          tp_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          evento_id?: string | null
+          id?: string
+          maximo_canjes?: number | null
+          tipo: string
+          precio?: number | null
+          tp_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          evento_id?: string | null
+          id?: string
+          maximo_canjes?: number | null
+          tipo?: string
+          precio?: number | null
+          tp_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tipos_tickets_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
