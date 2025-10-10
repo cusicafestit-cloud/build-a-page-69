@@ -176,6 +176,7 @@ export type Database = {
         Row: {
           apellido_asistente: string | null
           asistente_id: string
+          canjeado_tp: boolean | null
           cantidad: number | null
           correo: string | null
           created_at: string | null
@@ -187,11 +188,13 @@ export type Database = {
           fecha_procesado: string | null
           fecha_solicitud: string | null
           id: string
+          invoice_id: string | null
           metodo_pago_diferencia: string | null
           motivo: string | null
           nombre_asistente: string | null
           notas_admin: string | null
           procesado_por: string | null
+          ticket_ids: string[] | null
           ticket_tp_id: string | null
           tipo_ticket_destino_id: string
           tipo_ticket_original_id: string
@@ -200,6 +203,7 @@ export type Database = {
         Insert: {
           apellido_asistente?: string | null
           asistente_id: string
+          canjeado_tp?: boolean | null
           cantidad?: number | null
           correo?: string | null
           created_at?: string | null
@@ -211,11 +215,13 @@ export type Database = {
           fecha_procesado?: string | null
           fecha_solicitud?: string | null
           id?: string
+          invoice_id?: string | null
           metodo_pago_diferencia?: string | null
           motivo?: string | null
           nombre_asistente?: string | null
           notas_admin?: string | null
           procesado_por?: string | null
+          ticket_ids?: string[] | null
           ticket_tp_id?: string | null
           tipo_ticket_destino_id: string
           tipo_ticket_original_id: string
@@ -224,6 +230,7 @@ export type Database = {
         Update: {
           apellido_asistente?: string | null
           asistente_id?: string
+          canjeado_tp?: boolean | null
           cantidad?: number | null
           correo?: string | null
           created_at?: string | null
@@ -235,11 +242,13 @@ export type Database = {
           fecha_procesado?: string | null
           fecha_solicitud?: string | null
           id?: string
+          invoice_id?: string | null
           metodo_pago_diferencia?: string | null
           motivo?: string | null
           nombre_asistente?: string | null
           notas_admin?: string | null
           procesado_por?: string | null
+          ticket_ids?: string[] | null
           ticket_tp_id?: string | null
           tipo_ticket_destino_id?: string
           tipo_ticket_original_id?: string

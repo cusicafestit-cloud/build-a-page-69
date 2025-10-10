@@ -167,13 +167,13 @@ const TicketExchange = () => {
     setConfirming(true);
 
     try {
-      // Actualizar estado de todos los canjes a "esperando_tp"
+      // Actualizar estado de todos los canjes a "canjeados"
       const canjeIds = availableCanjes.map(canje => canje.id);
       
       const { error } = await supabase
         .from('canjes')
         .update({
-          estado: 'esperando_tp',
+          estado: 'canjeados',
           fecha_procesado: new Date().toISOString(),
         })
         .in('id', canjeIds);
@@ -421,7 +421,7 @@ const TicketExchange = () => {
                   <h4 className="font-medium text-gray-800 mb-2">Detalles del canje:</h4>
                   <div className="space-y-1 text-sm text-gray-600">
                     <p><strong>Total de canjes:</strong> {availableCanjes.length}</p>
-                    <p><strong>Estado:</strong> Esperando TP</p>
+                    <p><strong>Estado:</strong> Canjeados</p>
                   </div>
                 </div>
 
