@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Download, Upload, Filter, Users, Plus, User } from "lucide-react";
+import { Search, Download, Upload, Filter, Users, Plus, User, Eye, Edit } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -350,16 +350,16 @@ const Attendees = () => {
                     <TableHead>Email</TableHead>
                     <TableHead>Teléfono</TableHead>
                     <TableHead>Evento</TableHead>
-                    <TableHead>Tipo de Ticket</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Fecha de Registro</TableHead>
+                    <TableHead>Acción</TableHead>
                   </TableRow>
                 </TableHeader>
                 {isLoading ? (
                   <TableSkeleton 
                     columns={7} 
                     rows={5}
-                    headers={["Nombre", "Email", "Teléfono", "Evento", "Tipo de Ticket", "Estado", "Fecha de Registro"]}
+                    headers={["Nombre", "Email", "Teléfono", "Evento", "Estado", "Fecha de Registro", "Acción"]}
                   />
                 ) : (
                   <TableBody>
@@ -381,10 +381,29 @@ const Attendees = () => {
                           <TableCell>{attendee.email}</TableCell>
                           <TableCell>{attendee.phone}</TableCell>
                           <TableCell>{attendee.event}</TableCell>
-                          <TableCell>{attendee.ticketType}</TableCell>
                           <TableCell>{getStatusBadge(attendee.status)}</TableCell>
                           <TableCell>
                             {new Date(attendee.registrationDate).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Ver información"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Editar asistente"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
