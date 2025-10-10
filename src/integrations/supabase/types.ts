@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       asistentes: {
         Row: {
+          apellido: string | null
           ciudad: string | null
           codigo_ticket: string
           comentarios: string | null
@@ -37,6 +38,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          apellido?: string | null
           ciudad?: string | null
           codigo_ticket: string
           comentarios?: string | null
@@ -58,6 +60,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          apellido?: string | null
           ciudad?: string | null
           codigo_ticket?: string
           comentarios?: string | null

@@ -22,6 +22,7 @@ import {
 type Attendee = {
   id: string;
   name: string;
+  apellido: string;
   email: string;
   phone: string;
   event: string;
@@ -42,6 +43,7 @@ const Attendees = () => {
   
   const [newAttendee, setNewAttendee] = useState({
     nombre: "",
+    apellido: "",
     email: "",
     telefono: "",
     documentoIdentidad: "",
@@ -51,6 +53,7 @@ const Attendees = () => {
 
   const [editAttendee, setEditAttendee] = useState({
     nombre: "",
+    apellido: "",
     email: "",
     telefono: "",
     estado: ""
@@ -67,6 +70,7 @@ const Attendees = () => {
         .select(`
           id,
           nombre,
+          apellido,
           email,
           telefono,
           estado,
@@ -82,6 +86,7 @@ const Attendees = () => {
       return data.map(attendee => ({
         id: attendee.id,
         name: attendee.nombre || '',
+        apellido: attendee.apellido || '',
         email: attendee.email || '',
         phone: attendee.telefono || '',
         event: attendee.eventos?.nombre || 'Sin evento',
@@ -111,6 +116,7 @@ const Attendees = () => {
         .from("asistentes")
         .insert({
           nombre: newAttendee.nombre,
+          apellido: newAttendee.apellido,
           email: newAttendee.email,
           telefono: newAttendee.telefono,
           evento_id: null, // Sin evento específico
@@ -134,6 +140,7 @@ const Attendees = () => {
       setIsNewAttendeeOpen(false);
       setNewAttendee({
         nombre: "",
+        apellido: "",
         email: "",
         telefono: "",
         documentoIdentidad: "",
@@ -159,6 +166,7 @@ const Attendees = () => {
     setSelectedAttendee(attendee);
     setEditAttendee({
       nombre: attendee.name,
+      apellido: attendee.apellido,
       email: attendee.email,
       telefono: attendee.phone,
       estado: attendee.status
@@ -174,6 +182,7 @@ const Attendees = () => {
         .from("asistentes")
         .update({
           nombre: editAttendee.nombre,
+          apellido: editAttendee.apellido,
           email: editAttendee.email,
           telefono: editAttendee.telefono,
           estado: editAttendee.estado
@@ -253,14 +262,26 @@ const Attendees = () => {
                 {/* Información Personal */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nombre">Nombre Completo *</Label>
+                    <Label htmlFor="nombre">Nombre *</Label>
                     <Input
                       id="nombre"
                       value={newAttendee.nombre}
                       onChange={(e) => setNewAttendee({ ...newAttendee, nombre: e.target.value })}
-                      placeholder="Juan Pérez"
+                      placeholder="Juan"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="apellido">Apellido *</Label>
+                    <Input
+                      id="apellido"
+                      value={newAttendee.apellido}
+                      onChange={(e) => setNewAttendee({ ...newAttendee, apellido: e.target.value })}
+                      placeholder="Pérez"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email *</Label>
                     <Input
@@ -271,9 +292,6 @@ const Attendees = () => {
                       placeholder="juan@email.com"
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="telefono">Teléfono *</Label>
                     <Input
@@ -283,6 +301,9 @@ const Attendees = () => {
                       placeholder="+57 300 123 4567"
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="documento">Documento de Identidad</Label>
                     <Input
@@ -290,18 +311,6 @@ const Attendees = () => {
                       value={newAttendee.documentoIdentidad}
                       onChange={(e) => setNewAttendee({ ...newAttendee, documentoIdentidad: e.target.value })}
                       placeholder="12345678"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
-                    <Input
-                      id="fechaNacimiento"
-                      type="date"
-                      value={newAttendee.fechaNacimiento}
-                      onChange={(e) => setNewAttendee({ ...newAttendee, fechaNacimiento: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -315,11 +324,21 @@ const Attendees = () => {
                   </div>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
+                  <Input
+                    id="fechaNacimiento"
+                    type="date"
+                    value={newAttendee.fechaNacimiento}
+                    onChange={(e) => setNewAttendee({ ...newAttendee, fechaNacimiento: e.target.value })}
+                  />
+                </div>
+
               </div>
               <DialogFooter>
                 <Button 
                   onClick={handleCreateAttendee}
-                  disabled={!newAttendee.nombre || !newAttendee.email || !newAttendee.telefono}
+                  disabled={!newAttendee.nombre || !newAttendee.apellido || !newAttendee.email || !newAttendee.telefono}
                 >
                   Registrar Asistente
                 </Button>
@@ -494,29 +513,33 @@ const Attendees = () => {
                     <p className="font-medium">{selectedAttendee.name}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Email</Label>
-                    <p className="font-medium">{selectedAttendee.email}</p>
+                    <Label className="text-muted-foreground">Apellido</Label>
+                    <p className="font-medium">{selectedAttendee.apellido}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Email</Label>
+                    <p className="font-medium">{selectedAttendee.email}</p>
+                  </div>
                   <div>
                     <Label className="text-muted-foreground">Teléfono</Label>
                     <p className="font-medium">{selectedAttendee.phone}</p>
                   </div>
-                  <div>
-                    <Label className="text-muted-foreground">Estado</Label>
-                    <div className="mt-1">{getStatusBadge(selectedAttendee.status)}</div>
-                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground">Evento</Label>
-                    <p className="font-medium">{selectedAttendee.event}</p>
+                    <Label className="text-muted-foreground">Estado</Label>
+                    <div className="mt-1">{getStatusBadge(selectedAttendee.status)}</div>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Tipo de Ticket</Label>
                     <p className="font-medium">{selectedAttendee.ticketType}</p>
                   </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Evento</Label>
+                  <p className="font-medium">{selectedAttendee.event}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Fecha de Registro</Label>
@@ -546,30 +569,42 @@ const Attendees = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-nombre">Nombre Completo *</Label>
-                <Input
-                  id="edit-nombre"
-                  value={editAttendee.nombre}
-                  onChange={(e) => setEditAttendee({ ...editAttendee, nombre: e.target.value })}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-nombre">Nombre *</Label>
+                  <Input
+                    id="edit-nombre"
+                    value={editAttendee.nombre}
+                    onChange={(e) => setEditAttendee({ ...editAttendee, nombre: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-apellido">Apellido *</Label>
+                  <Input
+                    id="edit-apellido"
+                    value={editAttendee.apellido}
+                    onChange={(e) => setEditAttendee({ ...editAttendee, apellido: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-email">Email *</Label>
-                <Input
-                  id="edit-email"
-                  type="email"
-                  value={editAttendee.email}
-                  onChange={(e) => setEditAttendee({ ...editAttendee, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-telefono">Teléfono *</Label>
-                <Input
-                  id="edit-telefono"
-                  value={editAttendee.telefono}
-                  onChange={(e) => setEditAttendee({ ...editAttendee, telefono: e.target.value })}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email">Email *</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editAttendee.email}
+                    onChange={(e) => setEditAttendee({ ...editAttendee, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-telefono">Teléfono *</Label>
+                  <Input
+                    id="edit-telefono"
+                    value={editAttendee.telefono}
+                    onChange={(e) => setEditAttendee({ ...editAttendee, telefono: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-estado">Estado</Label>
@@ -594,7 +629,7 @@ const Attendees = () => {
               </Button>
               <Button 
                 onClick={handleUpdateAttendee}
-                disabled={!editAttendee.nombre || !editAttendee.email || !editAttendee.telefono}
+                disabled={!editAttendee.nombre || !editAttendee.apellido || !editAttendee.email || !editAttendee.telefono}
               >
                 Guardar Cambios
               </Button>
