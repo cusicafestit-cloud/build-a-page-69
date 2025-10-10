@@ -449,8 +449,6 @@ const TicketExchange = () => {
                   <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
                     <h4 className="font-medium text-gray-800 mb-2">Detalles del canje:</h4>
                     <div className="space-y-1 text-sm text-gray-600">
-                      <p><strong>De:</strong> {selectedCanje.evento_original?.nombre} - {selectedCanje.tipo_ticket_original?.tipo}</p>
-                      <p><strong>A:</strong> {selectedCanje.evento_destino?.nombre} - {selectedCanje.tipo_ticket_destino?.tipo}</p>
                       <p><strong>Cantidad:</strong> {selectedCanje.cantidad || 1} ticket{(selectedCanje.cantidad || 1) > 1 ? 's' : ''}</p>
                       <p><strong>Estado:</strong> Esperando TP</p>
                       {selectedCanje.motivo && (

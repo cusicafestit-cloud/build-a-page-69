@@ -75,7 +75,7 @@ const Events = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('eventos')
-        .select('id, nombre, fecha, estado, canjes_habilitados, tp_id')
+        .select('id, nombre, fecha, estado, tp_id')
         .order('fecha', { ascending: true });
       
       if (error) throw error;
@@ -86,7 +86,7 @@ const Events = () => {
         name: event.nombre,
         date: event.fecha,
         status: event.estado,
-        enabled_for_exchanges: event.canjes_habilitados,
+        enabled_for_exchanges: false, // Default value since column doesn't exist
         tp_id: event.tp_id,
         ticketTypes: [] // Will be populated separately
       }));
@@ -145,7 +145,6 @@ const Events = () => {
           capacidad: parseInt(eventData.capacity) || 0,
           precio: 0, // Campo requerido - precio por defecto
           estado: 'proximo', // Usar el valor por defecto de la BD
-          canjes_habilitados: eventData.enabledForExchanges || false,
           tp_id: eventData.tp_id || null
         })
         .select()
@@ -241,7 +240,6 @@ const Events = () => {
           nombre: eventData.name,
           fecha: eventData.date,
           estado: eventData.status,
-          canjes_habilitados: eventData.enabled_for_exchanges,
           tp_id: eventData.tp_id || null
         })
         .eq('id', eventData.id)
@@ -306,32 +304,22 @@ const Events = () => {
     deleteEventMutation.mutate(eventId);
   };
 
-  // Toggle exchanges enabled mutation
+  // Toggle exchanges enabled mutation - Disabled since column doesn't exist
   const toggleExchangesMutation = useMutation({
     mutationFn: async ({ eventId, enabled }: { eventId: string; enabled: boolean }) => {
-      const { data, error } = await supabase
-        .from('eventos')
-        .update({ canjes_habilitados: enabled })
-        .eq('id', eventId)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      // Column doesn't exist in database, return mock data
+      toast({
+        title: "Función no disponible",
+        description: "La columna canjes_habilitados no existe en la base de datos",
+        variant: "destructive",
+      });
+      throw new Error("Column not available");
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
-      toast({
-        title: variables.enabled ? "Canjes habilitados" : "Canjes deshabilitados",
-        description: `Los canjes han sido ${variables.enabled ? 'habilitados' : 'deshabilitados'} para este evento.`,
-      });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el estado de canjes. Intenta nuevamente.",
-        variant: "destructive",
-      });
+      // Error already shown in mutationFn
     },
   });
 

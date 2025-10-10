@@ -25,10 +25,15 @@ const Users = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewUserOpen, setIsNewUserOpen] = useState(false);
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<{
+    name: string;
+    email: string;
+    role: "admin" | "manager" | "staff";
+    password: string;
+  }>({
     name: "",
     email: "",
-    role: "staff" as const,
+    role: "staff",
     password: ""
   });
 
