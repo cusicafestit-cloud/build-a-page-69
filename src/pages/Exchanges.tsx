@@ -270,7 +270,65 @@ const Exchanges = () => {
   };
 
   const handleCreateExchange = async () => {
+    // Validación antes de crear
+    if (!newExchange.attendeeId || !newExchange.attendeeEmail || !newExchange.attendeeName) {
+      toast({
+        title: "Error de validación",
+        description: "Debe seleccionar un asistente válido.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!newExchange.originalEventId) {
+      toast({
+        title: "Error de validación",
+        description: "Debe seleccionar un evento original.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!newExchange.targetEventId) {
+      toast({
+        title: "Error de validación",
+        description: "Debe seleccionar un evento de destino.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newExchange.selectedTicketTypes.length === 0) {
+      toast({
+        title: "Error de validación",
+        description: "Debe seleccionar al menos un tipo de ticket.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
+      // Obtener los tipos de ticket del evento destino
+      const { data: targetTicketTypes, error: fetchError } = await supabase
+        .from('tipos_tickets')
+        .select('id, tipo')
+        .eq('evento_id', newExchange.targetEventId)
+        .limit(1);
+
+      if (fetchError) throw fetchError;
+      
+      if (!targetTicketTypes || targetTicketTypes.length === 0) {
+        toast({
+          title: "Error",
+          description: "El evento de destino no tiene tipos de ticket disponibles.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Usar el primer tipo de ticket del evento destino
+      const targetTicketTypeId = targetTicketTypes[0].id;
+
       // Crear un registro de canje por cada tipo de ticket seleccionado
       const promises = newExchange.selectedTicketTypes.map(async (ticketType) => {
         const { error } = await supabase
@@ -278,13 +336,14 @@ const Exchanges = () => {
           .insert({
             nombre_asistente: newExchange.attendeeName,
             apellido_asistente: '', // Campo requerido
-            correo: newExchange.attendeeEmail,
+            correo: newExchange.attendeeEmail, // Campo crítico para RLS
             asistente_id: newExchange.attendeeId,
             evento_original_id: newExchange.originalEventId,
             tipo_ticket_original_id: ticketType.id,
-            evento_destino_id: newExchange.originalEventId, // Mismo evento por ahora
-            tipo_ticket_destino_id: ticketType.id, // Mismo tipo por ahora
+            evento_destino_id: newExchange.targetEventId,
+            tipo_ticket_destino_id: targetTicketTypeId,
             cantidad: ticketType.cantidad,
+            motivo: newExchange.reason || null,
             estado: 'pendiente',
             diferencia_precio: 0
           });
@@ -313,11 +372,11 @@ const Exchanges = () => {
       setAttendeeSearchTerm("");
       setOriginalEventSearchTerm("");
       setTargetEventSearchTerm("");
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating exchange:', error);
       toast({
         title: "Error",
-        description: "No se pudo crear la solicitud de canje.",
+        description: error.message || "No se pudo crear la solicitud de canje.",
         variant: "destructive"
       });
     }
