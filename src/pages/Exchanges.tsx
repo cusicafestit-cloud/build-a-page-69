@@ -27,8 +27,6 @@ type Exchange = {
   attendeeEmail: string;
   originalEvent: string;
   originalTicketType: string;
-  targetEvent: string;
-  targetTicketType: string;
   status: "pending" | "approved" | "rejected" | "completed";
   requestDate: string;
   processedDate?: string;
@@ -77,7 +75,6 @@ const Exchanges = () => {
     attendeeName: "",
     attendeeEmail: "",
     originalEventId: "",
-    targetEventId: "",
     selectedTicketTypes: [] as SelectedTicketType[],
     reason: ""
   });
@@ -87,8 +84,6 @@ const Exchanges = () => {
   const [originalEventSearchOpen, setOriginalEventSearchOpen] = useState(false);
   const [attendeeSearchTerm, setAttendeeSearchTerm] = useState("");
   const [originalEventSearchTerm, setOriginalEventSearchTerm] = useState("");
-  const [targetEventSearchTerm, setTargetEventSearchTerm] = useState("");
-  const [targetEventSearchOpen, setTargetEventSearchOpen] = useState(false);
 
   // Fetch attendees from Supabase
   const { data: attendees = [] } = useQuery({
@@ -161,8 +156,6 @@ const Exchanges = () => {
         attendeeEmail: exchange.correo || 'Sin email',
         originalEvent: exchange.evento_original?.nombre || 'Sin evento',
         originalTicketType: `${exchange.tipo_ticket_original?.tipo || 'Sin tipo'} (${exchange.cantidad || 1})`,
-        targetEvent: exchange.evento_destino?.nombre || 'Sin evento',
-        targetTicketType: exchange.tipo_ticket_destino?.tipo || 'Sin tipo',
         status: exchange.estado as "pending" | "approved" | "rejected" | "completed",
         requestDate: exchange.created_at,
         processedDate: exchange.updated_at !== exchange.created_at ? exchange.updated_at : undefined,
@@ -228,15 +221,6 @@ const Exchanges = () => {
     setOriginalEventSearchTerm(event.nombre);
   };
 
-  const handleSelectTargetEvent = (event: Event) => {
-    setNewExchange({
-      ...newExchange,
-      targetEventId: event.id
-    });
-    setTargetEventSearchOpen(false);
-    setTargetEventSearchTerm(event.nombre);
-  };
-
   const handleToggleTicketType = (ticketType: TicketType) => {
     const isSelected = newExchange.selectedTicketTypes.some(t => t.id === ticketType.id);
     
@@ -288,15 +272,6 @@ const Exchanges = () => {
       return;
     }
 
-    if (!newExchange.targetEventId) {
-      toast({
-        title: "Error de validación",
-        description: "Debe seleccionar un evento de destino.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (newExchange.selectedTicketTypes.length === 0) {
       toast({
         title: "Error de validación",
@@ -342,11 +317,11 @@ const Exchanges = () => {
         });
       }
 
-      // Obtener los tipos de ticket del evento destino
+      // Obtener los tipos de ticket del evento original (usaremos el mismo evento)
       const { data: targetTicketTypes, error: fetchError } = await supabase
         .from('tipos_tickets')
         .select('id, tipo')
-        .eq('evento_id', newExchange.targetEventId)
+        .eq('evento_id', newExchange.originalEventId)
         .limit(1);
 
       if (fetchError) throw fetchError;
@@ -354,13 +329,13 @@ const Exchanges = () => {
       if (!targetTicketTypes || targetTicketTypes.length === 0) {
         toast({
           title: "Error",
-          description: "El evento de destino no tiene tipos de ticket disponibles.",
+          description: "El evento no tiene tipos de ticket disponibles.",
           variant: "destructive"
         });
         return;
       }
 
-      // Usar el primer tipo de ticket del evento destino
+      // Usar el primer tipo de ticket del evento
       const targetTicketTypeId = targetTicketTypes[0].id;
 
       // Crear un registro de canje por cada tipo de ticket seleccionado
@@ -374,11 +349,11 @@ const Exchanges = () => {
             asistente_id: newExchange.attendeeId,
             evento_original_id: newExchange.originalEventId,
             tipo_ticket_original_id: ticketType.id,
-            evento_destino_id: newExchange.targetEventId,
+            evento_destino_id: newExchange.originalEventId, // Usar el mismo evento
             tipo_ticket_destino_id: targetTicketTypeId,
             cantidad: ticketType.cantidad,
             motivo: newExchange.reason || null,
-            estado: 'pendiente',
+            estado: 'disponible',
             diferencia_precio: 0
           });
         
@@ -398,14 +373,12 @@ const Exchanges = () => {
         attendeeName: "",
         attendeeEmail: "",
         originalEventId: "",
-        targetEventId: "",
         selectedTicketTypes: [],
         reason: ""
       });
       // Reset search terms
       setAttendeeSearchTerm("");
       setOriginalEventSearchTerm("");
-      setTargetEventSearchTerm("");
     } catch (error: any) {
       console.error('Error creating exchange:', error);
       toast({
@@ -424,11 +397,6 @@ const Exchanges = () => {
 
   const filteredOriginalEvents = events.filter(event => 
     event.nombre?.toLowerCase().includes(originalEventSearchTerm.toLowerCase())
-  );
-
-  const filteredTargetEvents = events.filter(event => 
-    event.nombre?.toLowerCase().includes(targetEventSearchTerm.toLowerCase()) &&
-    event.id !== newExchange.originalEventId // No permitir el mismo evento
   );
 
   const stats = [
@@ -827,15 +795,9 @@ const Exchanges = () => {
             </DialogHeader>
             {selectedExchange && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Evento Original</Label>
-                    <p className="text-sm">{selectedExchange.originalEvent} - {selectedExchange.originalTicketType}</p>
-                  </div>
-                  <div>
-                    <Label>Evento Destino</Label>
-                    <p className="text-sm">{selectedExchange.targetEvent} - {selectedExchange.targetTicketType}</p>
-                  </div>
+                <div>
+                  <Label>Evento Original</Label>
+                  <p className="text-sm">{selectedExchange.originalEvent} - {selectedExchange.originalTicketType}</p>
                 </div>
                 <div>
                   <Label>Motivo</Label>
