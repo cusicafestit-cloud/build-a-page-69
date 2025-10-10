@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -51,6 +52,8 @@ const Events = () => {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isEventSummaryOpen, setIsEventSummaryOpen] = useState(false);
   const [summaryEvent, setSummaryEvent] = useState<Event | null>(null);
+  const [isDeleteEventDialogOpen, setIsDeleteEventDialogOpen] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<string | null>(null);
 
   const [newEvent, setNewEvent] = useState({
     name: "",
@@ -301,7 +304,16 @@ const Events = () => {
   });
 
   const handleDeleteEvent = (eventId: string) => {
-    deleteEventMutation.mutate(eventId);
+    setEventToDelete(eventId);
+    setIsDeleteEventDialogOpen(true);
+  };
+
+  const confirmDeleteEvent = () => {
+    if (eventToDelete) {
+      deleteEventMutation.mutate(eventToDelete);
+      setIsDeleteEventDialogOpen(false);
+      setEventToDelete(null);
+    }
   };
 
   // Toggle exchanges enabled mutation
@@ -1486,6 +1498,22 @@ const Events = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Alert Dialog para confirmar eliminación de evento */}
+        <AlertDialog open={isDeleteEventDialogOpen} onOpenChange={setIsDeleteEventDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción no se puede deshacer. Se eliminará permanentemente el evento y todos sus datos asociados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setEventToDelete(null)}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteEvent}>Eliminar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
