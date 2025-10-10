@@ -28,7 +28,7 @@ async function sendEmail(to: string, subject: string, html: string) {
       'Authorization': `Bearer ${RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: 'Soporte Canjes <onboarding@resend.dev>', // Cambiar por tu dominio verificado
+      from: 'Soporte Canjes <soporte@cusicafest.com>',
       to: [to],
       subject: subject,
       html: html,
