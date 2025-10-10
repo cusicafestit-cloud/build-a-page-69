@@ -13,7 +13,7 @@ import Settings from "./pages/Settings";
 import Academy from "./pages/Academy";
 import CourseStudents from "./pages/CourseStudents";
 import Users from "./pages/Users";
-import DatabaseValidation from "./pages/DatabaseValidation";
+import DatabaseValidation from "./pages/DatabaseValidationNew";
 import PublicExchange from "./pages/PublicExchange";
 import TicketExchange from "./pages/TicketExchange";
 import Auth from "./pages/Auth";

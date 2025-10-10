@@ -1,0 +1,347 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, Code, Eye } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import {
+  EmailTemplate,
+  EmailTemplateFormData,
+  AVAILABLE_VARIABLES,
+  TEMPLATE_CATEGORIES,
+  DEFAULT_HTML_TEMPLATE,
+  replaceTemplateVariables,
+} from "@/types/email-templates";
+
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  template: EmailTemplate | null;
+};
+
+export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const [formData, setFormData] = useState<EmailTemplateFormData>({
+    nombre: "",
+    descripcion: "",
+    asunto_predeterminado: "",
+    contenido_html: DEFAULT_HTML_TEMPLATE,
+    contenido_texto: "",
+    variables_disponibles: [],
+    categoria: "evento",
+    es_predeterminada: false,
+    activa: true,
+  });
+
+  // Actualizar formulario cuando cambie la plantilla
+  useEffect(() => {
+    if (template) {
+      setFormData({
+        nombre: template.nombre,
+        descripcion: template.descripcion || "",
+        asunto_predeterminado: template.asunto_predeterminado || "",
+        contenido_html: template.contenido_html,
+        contenido_texto: template.contenido_texto || "",
+        variables_disponibles: template.variables_disponibles || [],
+        categoria: template.categoria || "evento",
+        es_predeterminada: template.es_predeterminada,
+        activa: template.activa,
+      });
+    } else {
+      // Resetear para nueva plantilla
+      setFormData({
+        nombre: "",
+        descripcion: "",
+        asunto_predeterminado: "",
+        contenido_html: DEFAULT_HTML_TEMPLATE,
+        contenido_texto: "",
+        variables_disponibles: [],
+        categoria: "evento",
+        es_predeterminada: false,
+        activa: true,
+      });
+    }
+  }, [template, open]);
+
+  // Mutation de crear
+  const createMutation = useMutation({
+    mutationFn: async (data: EmailTemplateFormData) => {
+      if (!data.nombre || !data.contenido_html) {
+        throw new Error("Nombre y contenido HTML son requeridos");
+      }
+
+      const { data: created, error } = await supabase
+        .from("plantillas_email")
+        .insert({
+          nombre: data.nombre,
+          descripcion: data.descripcion || null,
+          asunto_predeterminado: data.asunto_predeterminado || null,
+          contenido_html: data.contenido_html,
+          contenido_texto: data.contenido_texto || null,
+          variables_disponibles: data.variables_disponibles || [],
+          categoria: data.categoria || null,
+          es_predeterminada: data.es_predeterminada || false,
+          activa: data.activa ?? true,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return created;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-templates"] });
+      toast({
+        title: "Plantilla creada",
+        description: "La plantilla ha sido creada exitosamente.",
+      });
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      console.error("Error creating template:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear la plantilla.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation de actualizar
+  const updateMutation = useMutation({
+    mutationFn: async (data: EmailTemplateFormData) => {
+      if (!template) throw new Error("No template selected");
+
+      const { data: updated, error } = await supabase
+        .from("plantillas_email")
+        .update({
+          nombre: data.nombre,
+          descripcion: data.descripcion || null,
+          asunto_predeterminado: data.asunto_predeterminado || null,
+          contenido_html: data.contenido_html,
+          contenido_texto: data.contenido_texto || null,
+          variables_disponibles: data.variables_disponibles || [],
+          categoria: data.categoria || null,
+          es_predeterminada: data.es_predeterminada || false,
+          activa: data.activa ?? true,
+        })
+        .eq("id", template.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return updated;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-templates"] });
+      toast({
+        title: "Plantilla actualizada",
+        description: "Los cambios han sido guardados correctamente.",
+      });
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la plantilla.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSave = () => {
+    if (template) {
+      updateMutation.mutate(formData);
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
+
+  const insertVariable = (variableKey: string) => {
+    const textarea = document.getElementById("html-editor") as HTMLTextAreaElement;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = formData.contenido_html;
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      
+      setFormData({
+        ...formData,
+        contenido_html: before + variableKey + after,
+      });
+
+      // Mantener el foco y mover cursor
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + variableKey.length, start + variableKey.length);
+      }, 0);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            {template ? "Editar Plantilla" : "Nueva Plantilla"}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-2 gap-6 flex-1 overflow-hidden">
+          {/* Panel izquierdo: Formulario y código */}
+          <div className="space-y-4 overflow-y-auto pr-2">
+            <div>
+              <Label htmlFor="nombre">Nombre de la Plantilla *</Label>
+              <Input
+                id="nombre"
+                value={formData.nombre}
+                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                placeholder="Ej: Confirmación de Evento"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="descripcion">Descripción</Label>
+              <Textarea
+                id="descripcion"
+                value={formData.descripcion}
+                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                placeholder="Breve descripción de la plantilla..."
+                rows={2}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="categoria">Categoría</Label>
+                <Select value={formData.categoria} onValueChange={(value) => setFormData({ ...formData, categoria: value })}>
+                  <SelectTrigger id="categoria">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TEMPLATE_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="asunto">Asunto Predeterminado</Label>
+                <Input
+                  id="asunto"
+                  value={formData.asunto_predeterminado}
+                  onChange={(e) => setFormData({ ...formData, asunto_predeterminado: e.target.value })}
+                  placeholder="¡Tu ticket para {{evento}}!"
+                />
+              </div>
+            </div>
+
+            {/* Variables disponibles */}
+            <div>
+              <Label>Variables Disponibles</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {AVAILABLE_VARIABLES.map((variable) => (
+                  <Button
+                    key={variable.key}
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() => insertVariable(variable.key)}
+                    title={`${variable.label}: ${variable.example}`}
+                  >
+                    {variable.key}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Haz clic para insertar una variable en la posición del cursor
+              </p>
+            </div>
+
+            {/* Editor de código */}
+            <Tabs defaultValue="html" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="html">
+                  <Code className="w-4 h-4 mr-2" />
+                  HTML
+                </TabsTrigger>
+                <TabsTrigger value="text">Texto Plano</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="html" className="mt-2">
+                <Label htmlFor="html-editor">Contenido HTML *</Label>
+                <Textarea
+                  id="html-editor"
+                  value={formData.contenido_html}
+                  onChange={(e) => setFormData({ ...formData, contenido_html: e.target.value })}
+                  className="h-[300px] font-mono text-sm"
+                  placeholder="<html>...</html>"
+                />
+              </TabsContent>
+              
+              <TabsContent value="text" className="mt-2">
+                <Label htmlFor="text-editor">Contenido Texto Plano</Label>
+                <Textarea
+                  id="text-editor"
+                  value={formData.contenido_texto}
+                  onChange={(e) => setFormData({ ...formData, contenido_texto: e.target.value })}
+                  className="h-[300px]"
+                  placeholder="Versión de texto plano para clientes que no soportan HTML..."
+                  rows={15}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Panel derecho: Preview */}
+          <div className="border rounded-lg overflow-hidden bg-muted/20 flex flex-col">
+            <div className="bg-muted p-3 border-b flex items-center gap-2">
+              <Eye className="w-4 h-4" />
+              <span className="font-medium">Vista Previa</span>
+              <span className="text-xs text-muted-foreground ml-auto">
+                Las variables muestran valores de ejemplo
+              </span>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <iframe
+                srcDoc={replaceTemplateVariables(formData.contenido_html)}
+                className="w-full h-full border-0"
+                sandbox="allow-same-origin"
+                title="Preview"
+              />
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="border-t pt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={!formData.nombre || !formData.contenido_html || createMutation.isPending || updateMutation.isPending}
+          >
+            {createMutation.isPending || updateMutation.isPending
+              ? "Guardando..."
+              : template
+              ? "Actualizar Plantilla"
+              : "Crear Plantilla"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
