@@ -726,21 +726,20 @@ const Exchanges = () => {
                     <TableHead>Evento Original</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Fecha Solicitud</TableHead>
-                    <TableHead>Motivo</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 {isLoading ? (
                   <TableSkeleton 
-                    columns={6} 
+                    columns={5} 
                     rows={5}
-                    headers={["Asistente", "Evento Original", "Estado", "Fecha Solicitud", "Motivo", "Acciones"]}
+                    headers={["Asistente", "Evento Original", "Estado", "Fecha Solicitud", "Acciones"]}
                   />
                 ) : (
                   <TableBody>
                     {filteredExchanges.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={5} className="text-center py-8">
                         <div className="text-muted-foreground">
                           {searchTerm || filterStatus !== "all" 
                             ? "No se encontraron canjes con los filtros aplicados"
@@ -768,7 +767,6 @@ const Exchanges = () => {
                         <TableCell>
                           {new Date(exchange.requestDate).toLocaleDateString()}
                         </TableCell>
-                        <TableCell className="max-w-xs truncate">{exchange.reason}</TableCell>
                         <TableCell>
                           {exchange.status === "pending" && (
                             <div className="flex gap-2">
