@@ -1371,15 +1371,6 @@ const Events = () => {
                       </div>
                       
                       <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Estado</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant={summaryEvent.status === "active" ? "default" : "secondary"}>
-                            {summaryEvent.status === "active" ? "Activo" : "Próximo"}
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      <div>
                         <Label className="text-sm font-medium text-muted-foreground">Canjes</Label>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant={summaryEvent.enabled_for_exchanges ? "default" : "secondary"}>
