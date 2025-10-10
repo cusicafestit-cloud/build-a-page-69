@@ -272,6 +272,7 @@ const Exchanges = () => {
           .insert({
             nombre_asistente: newExchange.attendeeName,
             apellido_asistente: '', // Campo requerido
+            correo: newExchange.attendeeEmail,
             asistente_id: newExchange.attendeeId,
             evento_original_id: newExchange.originalEventId,
             tipo_ticket_original_id: ticketType.id,
