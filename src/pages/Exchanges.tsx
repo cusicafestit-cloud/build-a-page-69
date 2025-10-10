@@ -183,6 +183,61 @@ const Exchanges = () => {
     },
   });
 
+  // Realtime subscriptions para actualizar datos automáticamente
+  useEffect(() => {
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'canjes'
+        },
+        () => {
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'asistentes'
+        },
+        () => {
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'eventos'
+        },
+        () => {
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tipos_tickets'
+        },
+        () => {
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
+
   const filteredExchanges = exchanges.filter(exchange => {
     const matchesSearch = exchange.attendeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          exchange.attendeeEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -433,6 +488,61 @@ const Exchanges = () => {
   const filteredOriginalEvents = events.filter(event => 
     event.nombre?.toLowerCase().includes(originalEventSearchTerm.toLowerCase())
   );
+
+  // Realtime subscriptions
+  useEffect(() => {
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'canjes'
+        },
+        () => {
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'asistentes'
+        },
+        () => {
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'eventos'
+        },
+        () => {
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tipos_tickets'
+        },
+        () => {
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
 
   const stats = [
     { title: "Total Canjes", value: exchanges.length.toString(), icon: Repeat },
