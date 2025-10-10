@@ -49,10 +49,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let canje_id: string | null = null;
+
   try {
     console.log('🚀 Iniciando proceso de notificación de error de canje');
     
-    const { canje_id }: CanjeErrorData = await req.json();
+    const requestData: CanjeErrorData = await req.json();
+    canje_id = requestData.canje_id;
     
     if (!canje_id) {
       throw new Error('canje_id es requerido');
@@ -275,9 +278,8 @@ serve(async (req) => {
     console.error('❌ Error en notificar-error-canje:', error);
     
     // Intentar registrar el error en logs si es posible
-    try {
-      const { canje_id } = await req.json();
-      if (canje_id) {
+    if (canje_id) {
+      try {
         await supabase
           .from('logs_notificaciones_canje')
           .insert({
@@ -286,9 +288,9 @@ serve(async (req) => {
             estado: 'fallido',
             error_mensaje: error.message || 'Error desconocido'
           });
+      } catch (logError) {
+        console.error('No se pudo registrar error en logs:', logError);
       }
-    } catch (logError) {
-      console.error('No se pudo registrar error en logs:', logError);
     }
 
     return new Response(
