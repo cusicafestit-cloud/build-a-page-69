@@ -34,6 +34,9 @@ type Exchange = {
   emailErrorEnviado?: boolean;
   errorTp?: boolean;
   canjeadoTp?: boolean;
+  ticketIds?: string[];
+  invoiceId?: string;
+  responseTp?: string;
 };
 
 type Attendee = {
@@ -73,6 +76,7 @@ const Exchanges = () => {
   const [isNewExchangeOpen, setIsNewExchangeOpen] = useState(false);
   const [selectedExchange, setSelectedExchange] = useState<Exchange | null>(null);
   const [isProcessDialogOpen, setIsProcessDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   const [newExchange, setNewExchange] = useState({
     attendeeId: "",
@@ -148,6 +152,9 @@ const Exchanges = () => {
           email_error_enviado,
           ERROR_TP,
           canjeado_tp,
+          ticket_ids,
+          invoice_id,
+          response_tp,
           evento_original:eventos!evento_original_id(nombre),
           tipo_ticket_original:tipos_tickets!tipo_ticket_original_id(tipo)
         `)
@@ -168,7 +175,10 @@ const Exchanges = () => {
         reason: exchange.motivo,
         emailErrorEnviado: exchange.email_error_enviado || false,
         errorTp: exchange.ERROR_TP || false,
-        canjeadoTp: exchange.canjeado_tp || false
+        canjeadoTp: exchange.canjeado_tp || false,
+        ticketIds: exchange.ticket_ids || [],
+        invoiceId: exchange.invoice_id,
+        responseTp: exchange.response_tp
       }));
     },
   });
@@ -767,7 +777,14 @@ const Exchanges = () => {
                     </TableRow>
                   ) : (
                     filteredExchanges.map((exchange) => (
-                      <TableRow key={exchange.id}>
+                      <TableRow 
+                        key={exchange.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => {
+                          setSelectedExchange(exchange);
+                          setIsDetailsDialogOpen(true);
+                        }}
+                      >
                         <TableCell>
                           <div>
                             <div className="font-medium">{exchange.attendeeName}</div>
@@ -805,7 +822,7 @@ const Exchanges = () => {
                         <TableCell>
                           {new Date(exchange.requestDate).toLocaleDateString()}
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           {exchange.status === "pending" && (
                             <div className="flex gap-2">
                               <Button
@@ -830,6 +847,80 @@ const Exchanges = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Details Dialog */}
+        <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Detalles del Canje</DialogTitle>
+              <DialogDescription>
+                Información completa del registro de canje
+              </DialogDescription>
+            </DialogHeader>
+            {selectedExchange && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Asistente</Label>
+                    <p className="font-medium">{selectedExchange.attendeeName}</p>
+                    <p className="text-sm text-muted-foreground">{selectedExchange.attendeeEmail}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Evento Original</Label>
+                    <p className="font-medium">{selectedExchange.originalEvent}</p>
+                    <p className="text-sm text-muted-foreground">{selectedExchange.originalTicketType}</p>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-muted-foreground">Ticket IDs</Label>
+                      {selectedExchange.ticketIds && selectedExchange.ticketIds.length > 0 ? (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {selectedExchange.ticketIds.map((ticketId, index) => (
+                            <Badge key={index} variant="outline" className="font-mono text-xs">
+                              {ticketId}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mt-1">Sin tickets asignados</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-muted-foreground">Invoice ID</Label>
+                      {selectedExchange.invoiceId ? (
+                        <p className="font-mono text-sm mt-1">{selectedExchange.invoiceId}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mt-1">Sin invoice</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-muted-foreground">Response TP</Label>
+                      {selectedExchange.responseTp ? (
+                        <div className="mt-2 p-3 bg-muted rounded-md">
+                          <pre className="text-xs overflow-auto max-h-40 whitespace-pre-wrap">
+                            {selectedExchange.responseTp}
+                          </pre>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mt-1">Sin respuesta</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Process Exchange Dialog */}
         <Dialog open={isProcessDialogOpen} onOpenChange={setIsProcessDialogOpen}>
