@@ -121,7 +121,7 @@ const TicketExchange = () => {
           tipo_ticket_destino:tipos_tickets!tipo_ticket_destino_id(*)
         `)
         .eq('asistente_id', attendee.id)
-        .eq('estado', 'disponible');
+        .eq('estado', 'pendiente');
 
       if (canjesError) {
         console.error('Error fetching canjes:', canjesError);
