@@ -61,6 +61,7 @@ type SelectedTicketType = {
   tipo: string;
   tp_id?: string;
   color?: string;
+  cantidad: number;
 };
 
 const Exchanges = () => {
@@ -246,31 +247,73 @@ const Exchanges = () => {
           id: ticketType.id,
           tipo: ticketType.tipo,
           tp_id: ticketType.tp_id,
-          color: ticketType.color
+          color: ticketType.color,
+          cantidad: 1
         }]
       });
     }
   };
 
-  const handleCreateExchange = () => {
-    toast({
-      title: "Canje creado",
-      description: "La solicitud de canje ha sido creada exitosamente.",
-    });
-    setIsNewExchangeOpen(false);
+  const handleUpdateTicketQuantity = (ticketId: string, cantidad: number) => {
     setNewExchange({
-      attendeeId: "",
-      attendeeName: "",
-      attendeeEmail: "",
-      originalEventId: "",
-      targetEventId: "",
-      selectedTicketTypes: [],
-      reason: ""
+      ...newExchange,
+      selectedTicketTypes: newExchange.selectedTicketTypes.map(t => 
+        t.id === ticketId ? { ...t, cantidad: Math.max(1, cantidad) } : t
+      )
     });
-    // Reset search terms
-    setAttendeeSearchTerm("");
-    setOriginalEventSearchTerm("");
-    setTargetEventSearchTerm("");
+  };
+
+  const handleCreateExchange = async () => {
+    try {
+      // Crear un registro de canje por cada tipo de ticket seleccionado
+      const promises = newExchange.selectedTicketTypes.map(async (ticketType) => {
+        const { error } = await supabase
+          .from('canjes')
+          .insert({
+            nombre_asistente: newExchange.attendeeName,
+            apellido_asistente: '', // Campo requerido
+            asistente_id: newExchange.attendeeId,
+            evento_original_id: newExchange.originalEventId,
+            tipo_ticket_original_id: ticketType.id,
+            evento_destino_id: newExchange.originalEventId, // Mismo evento por ahora
+            tipo_ticket_destino_id: ticketType.id, // Mismo tipo por ahora
+            cantidad: ticketType.cantidad,
+            estado: 'pendiente',
+            diferencia_precio: 0
+          });
+        
+        if (error) throw error;
+      });
+
+      await Promise.all(promises);
+
+      toast({
+        title: "Canje creado",
+        description: `Se crearon ${newExchange.selectedTicketTypes.length} solicitud(es) de canje exitosamente.`,
+      });
+      
+      setIsNewExchangeOpen(false);
+      setNewExchange({
+        attendeeId: "",
+        attendeeName: "",
+        attendeeEmail: "",
+        originalEventId: "",
+        targetEventId: "",
+        selectedTicketTypes: [],
+        reason: ""
+      });
+      // Reset search terms
+      setAttendeeSearchTerm("");
+      setOriginalEventSearchTerm("");
+      setTargetEventSearchTerm("");
+    } catch (error) {
+      console.error('Error creating exchange:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo crear la solicitud de canje.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Filtrar datos para los searchboxes
@@ -466,39 +509,54 @@ const Exchanges = () => {
                         </div>
                       ) : (
                         ticketTypes.map((ticketType) => {
-                          const isSelected = newExchange.selectedTicketTypes.some(t => t.id === ticketType.id);
+                          const selectedTicket = newExchange.selectedTicketTypes.find(t => t.id === ticketType.id);
+                          const isSelected = !!selectedTicket;
                           return (
-                            <div
-                              key={ticketType.id}
-                              className={cn(
-                                "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all",
-                                isSelected 
-                                  ? "bg-primary/10 border-primary" 
-                                  : "bg-background hover:bg-muted/50"
-                              )}
-                              onClick={() => handleToggleTicketType(ticketType)}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div 
-                                  className={cn(
-                                    "w-4 h-4 rounded-full border-2",
-                                    !ticketType.color && "bg-gray-500"
-                                  )}
-                                  style={ticketType.color ? { backgroundColor: ticketType.color } : undefined}
-                                />
-                                <div>
-                                  <span className="font-medium">{ticketType.tipo}</span>
-                                  {ticketType.tp_id && (
-                                    <span className="ml-2 px-1.5 py-0.5 bg-muted rounded text-xs font-mono">
-                                      {ticketType.tp_id}
-                                    </span>
-                                  )}
+                            <div key={ticketType.id} className="space-y-2">
+                              <div
+                                className={cn(
+                                  "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all",
+                                  isSelected 
+                                    ? "bg-primary/10 border-primary" 
+                                    : "bg-background hover:bg-muted/50"
+                                )}
+                                onClick={() => handleToggleTicketType(ticketType)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div 
+                                    className={cn(
+                                      "w-4 h-4 rounded-full border-2",
+                                      !ticketType.color && "bg-gray-500"
+                                    )}
+                                    style={ticketType.color ? { backgroundColor: ticketType.color } : undefined}
+                                  />
+                                  <div>
+                                    <span className="font-medium">{ticketType.tipo}</span>
+                                    {ticketType.tp_id && (
+                                      <span className="ml-2 px-1.5 py-0.5 bg-muted rounded text-xs font-mono">
+                                        {ticketType.tp_id}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
+                                {isSelected ? (
+                                  <Check className="w-5 h-5 text-primary" />
+                                ) : (
+                                  <div className="w-5 h-5 border-2 border-muted-foreground rounded" />
+                                )}
                               </div>
-                              {isSelected ? (
-                                <Check className="w-5 h-5 text-primary" />
-                              ) : (
-                                <div className="w-5 h-5 border-2 border-muted-foreground rounded" />
+                              {isSelected && (
+                                <div className="flex items-center gap-2 ml-7 pb-2">
+                                  <Label className="text-sm">Cantidad:</Label>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={selectedTicket.cantidad}
+                                    onChange={(e) => handleUpdateTicketQuantity(ticketType.id, parseInt(e.target.value) || 1)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-20"
+                                  />
+                                </div>
                               )}
                             </div>
                           );
@@ -511,9 +569,9 @@ const Exchanges = () => {
               <DialogFooter>
                 <Button 
                   onClick={handleCreateExchange}
-                  disabled={!newExchange.attendeeId || !newExchange.originalEventId || !newExchange.targetEventId || newExchange.selectedTicketTypes.length === 0}
+                  disabled={!newExchange.attendeeId || !newExchange.originalEventId || newExchange.selectedTicketTypes.length === 0}
                 >
-                  Crear Solicitud
+                  Crear Solicitud ({newExchange.selectedTicketTypes.length} registro{newExchange.selectedTicketTypes.length !== 1 ? 's' : ''})
                 </Button>
               </DialogFooter>
             </DialogContent>
