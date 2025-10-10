@@ -162,26 +162,27 @@ const TicketExchange = () => {
     }
   };
 
-  // Confirmar canje
-  const handleConfirmCanje = async (canje: any) => {
-    setSelectedCanje(canje);
+  // Confirmar todos los canjes
+  const handleConfirmAllCanjes = async () => {
     setConfirming(true);
 
     try {
-      // Actualizar estado del canje a "esperando_tp"
+      // Actualizar estado de todos los canjes a "esperando_tp"
+      const canjeIds = availableCanjes.map(canje => canje.id);
+      
       const { error } = await supabase
         .from('canjes')
         .update({
           estado: 'esperando_tp',
           fecha_procesado: new Date().toISOString(),
         })
-        .eq('id', canje.id);
+        .in('id', canjeIds);
 
       if (error) {
-        console.error('Error updating canje:', error);
+        console.error('Error updating canjes:', error);
         toast({
           title: "Error",
-          description: "No se pudo procesar el canje",
+          description: "No se pudo procesar los canjes",
           variant: "destructive",
         });
         return;
@@ -192,8 +193,8 @@ const TicketExchange = () => {
         launchConfetti();
         setStep('success');
         toast({
-          title: "¡Canje exitoso!",
-          description: "Tu solicitud de canje ha sido procesada correctamente",
+          title: "¡Canjes exitosos!",
+          description: "Tus solicitudes de canje han sido procesadas correctamente",
         });
       }, 1000);
 
@@ -201,7 +202,7 @@ const TicketExchange = () => {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "Ocurrió un error al procesar el canje",
+        description: "Ocurrió un error al procesar los canjes",
         variant: "destructive",
       });
     } finally {
@@ -357,74 +358,45 @@ const TicketExchange = () => {
                   {/* Lista de canjes */}
                   {availableCanjes.map((canje: any) => (
                     <div key={canje.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-500" />
                           <span className="font-medium text-gray-800">
-                            {canje.evento_original?.nombre} → {canje.evento_destino?.nombre}
+                            {canje.evento_destino?.nombre}
                           </span>
-                        </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {canje.cantidad || 1} ticket{(canje.cantidad || 1) > 1 ? 's' : ''}
-                        </Badge>
-                      </div>
-                      
-                      <div className="space-y-2 mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">De:</span>
-                          <div 
-                            className="w-3 h-3 rounded-full"
-                            style={{backgroundColor: canje.tipo_ticket_original?.color || '#6B7280'}}
-                          />
-                          <span className="text-sm text-gray-600">
-                            {canje.tipo_ticket_original?.tipo}
-                          </span>
-                          {canje.tipo_ticket_original?.tp_id && (
-                            <Badge variant="outline" className="text-xs">
-                              {canje.tipo_ticket_original.tp_id}
-                            </Badge>
-                          )}
                         </div>
                         
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">A:</span>
-                          <div 
-                            className="w-3 h-3 rounded-full"
-                            style={{backgroundColor: canje.tipo_ticket_destino?.color || '#6B7280'}}
-                          />
+                          <Ticket className="w-4 h-4 text-gray-500" />
                           <span className="text-sm text-gray-600">
                             {canje.tipo_ticket_destino?.tipo}
                           </span>
-                          {canje.tipo_ticket_destino?.tp_id && (
-                            <Badge variant="outline" className="text-xs">
-                              {canje.tipo_ticket_destino.tp_id}
-                            </Badge>
-                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {canje.cantidad || 1} ticket{(canje.cantidad || 1) > 1 ? 's' : ''}
+                          </Badge>
                         </div>
                       </div>
-
-                      {canje.motivo && (
-                        <div className="mb-3 p-2 bg-blue-50 rounded text-xs text-blue-700">
-                          <strong>Motivo:</strong> {canje.motivo}
-                        </div>
-                      )}
-
-                      <Button
-                        onClick={() => handleConfirmCanje(canje)}
-                        disabled={confirming}
-                        className="w-full bg-green-500 hover:bg-green-600 text-white"
-                      >
-                        {confirming ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Procesando...
-                          </>
-                        ) : (
-                          'Confirmar Canje'
-                        )}
-                      </Button>
                     </div>
                   ))}
+
+                  {/* Botón para confirmar todos */}
+                  <Button
+                    onClick={() => handleConfirmAllCanjes()}
+                    disabled={confirming}
+                    className="w-full bg-green-500 hover:bg-green-600 text-white mt-4"
+                  >
+                    {confirming ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      'Confirmar Todos los Canjes'
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -445,18 +417,13 @@ const TicketExchange = () => {
                   Te enviaremos un correo con los datos del canje.
                 </p>
                 
-                {selectedCanje && (
-                  <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-                    <h4 className="font-medium text-gray-800 mb-2">Detalles del canje:</h4>
-                    <div className="space-y-1 text-sm text-gray-600">
-                      <p><strong>Cantidad:</strong> {selectedCanje.cantidad || 1} ticket{(selectedCanje.cantidad || 1) > 1 ? 's' : ''}</p>
-                      <p><strong>Estado:</strong> Esperando TP</p>
-                      {selectedCanje.motivo && (
-                        <p><strong>Motivo:</strong> {selectedCanje.motivo}</p>
-                      )}
-                    </div>
+                <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+                  <h4 className="font-medium text-gray-800 mb-2">Detalles del canje:</h4>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p><strong>Total de canjes:</strong> {availableCanjes.length}</p>
+                    <p><strong>Estado:</strong> Esperando TP</p>
                   </div>
-                )}
+                </div>
 
                 <Button
                   onClick={handleReset}
