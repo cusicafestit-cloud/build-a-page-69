@@ -128,11 +128,63 @@ const TicketExchange = () => {
         return;
       }
 
-      // Filtrar canjes donde el evento original tenga canjes habilitados
-      const canjesHabilitados = canjes?.filter((canje: any) => {
+      // Validar límite máximo de canjes por tipo de ticket
+      const canjesValidados = [];
+      const canjesRechazados = [];
+
+      for (const canje of (canjes || [])) {
         const eventoOriginalHabilitado = canje.evento_original?.canjes_habilitados === true;
-        return eventoOriginalHabilitado;
-      }) || [];
+        
+        if (!eventoOriginalHabilitado) {
+          continue; // Saltar canjes de eventos sin canjes habilitados
+        }
+
+        const tipoTicket = canje.tipo_ticket_original;
+        const maximoCanjes = tipoTicket?.maximo_canjes || 0;
+
+        // Si maximo_canjes es 0, significa ilimitado
+        if (maximoCanjes === 0) {
+          canjesValidados.push(canje);
+          continue;
+        }
+
+        // Contar cuántos canjes ya se han procesado para este tipo de ticket
+        const { count: canjesUsados, error: countError } = await supabase
+          .from('canjes')
+          .select('*', { count: 'exact', head: true })
+          .eq('tipo_ticket_original_id', canje.tipo_ticket_original_id)
+          .eq('estado', 'canjeado');
+
+        if (countError) {
+          console.error('Error counting canjes:', countError);
+          continue;
+        }
+
+        // Verificar si se alcanzó el límite
+        if ((canjesUsados || 0) >= maximoCanjes) {
+          canjesRechazados.push({
+            ...canje,
+            razon: `Se alcanzó el límite máximo de ${maximoCanjes} canje(s) para este tipo de ticket`
+          });
+        } else {
+          canjesValidados.push(canje);
+        }
+      }
+
+      // Si hay canjes rechazados, mostrar mensaje de advertencia
+      if (canjesRechazados.length > 0) {
+        const mensajes = canjesRechazados.map((c: any) => 
+          `${c.tipo_ticket_original?.tipo}: ${c.razon}`
+        ).join('\n');
+        
+        toast({
+          title: "Algunos canjes no están disponibles",
+          description: mensajes,
+          variant: "destructive",
+        });
+      }
+
+      const canjesHabilitados = canjesValidados;
 
       if (canjesHabilitados.length === 0) {
         setStep('error');
@@ -165,11 +217,61 @@ const TicketExchange = () => {
     setConfirming(true);
 
     try {
+      // Validar nuevamente los límites antes de procesar
+      const canjesAValidar = [];
+      const canjesRechazados = [];
+
+      for (const canje of availableCanjes) {
+        const tipoTicket = (canje as any).tipo_ticket_original;
+        const maximoCanjes = tipoTicket?.maximo_canjes || 0;
+
+        // Si maximo_canjes es 0, significa ilimitado
+        if (maximoCanjes === 0) {
+          canjesAValidar.push(canje);
+          continue;
+        }
+
+        // Contar cuántos canjes ya se han procesado para este tipo de ticket
+        const { count: canjesUsados, error: countError } = await supabase
+          .from('canjes')
+          .select('*', { count: 'exact', head: true })
+          .eq('tipo_ticket_original_id', (canje as any).tipo_ticket_original_id)
+          .eq('estado', 'canjeado');
+
+        if (countError) {
+          console.error('Error counting canjes:', countError);
+          canjesRechazados.push(canje);
+          continue;
+        }
+
+        // Verificar si se alcanzó el límite
+        if ((canjesUsados || 0) >= maximoCanjes) {
+          canjesRechazados.push(canje);
+          toast({
+            title: "Límite alcanzado",
+            description: `El tipo de ticket "${tipoTicket?.tipo}" ha alcanzado el límite máximo de ${maximoCanjes} canje(s)`,
+            variant: "destructive",
+          });
+        } else {
+          canjesAValidar.push(canje);
+        }
+      }
+
+      if (canjesRechazados.length > 0 && canjesAValidar.length === 0) {
+        toast({
+          title: "No se pueden procesar los canjes",
+          description: "Todos los canjes han alcanzado su límite máximo",
+          variant: "destructive",
+        });
+        setConfirming(false);
+        return;
+      }
+
       // Guardar información de los canjes antes de actualizarlos
-      setProcessedCanjes(availableCanjes);
+      setProcessedCanjes(canjesAValidar);
       
-      // Actualizar estado de todos los canjes a "canjeado"
-      const canjeIds = availableCanjes.map(canje => canje.id);
+      // Actualizar estado de los canjes validados a "canjeado"
+      const canjeIds = canjesAValidar.map(canje => canje.id);
       
       const { error } = await supabase
         .from('canjes')
@@ -186,6 +288,7 @@ const TicketExchange = () => {
           description: "No se pudo procesar los canjes",
           variant: "destructive",
         });
+        setConfirming(false);
         return;
       }
 
@@ -195,7 +298,9 @@ const TicketExchange = () => {
         setStep('success');
         toast({
           title: "¡Canjes exitosos!",
-          description: "Tus solicitudes de canje han sido procesadas correctamente",
+          description: canjesAValidar.length === availableCanjes.length 
+            ? "Tus solicitudes de canje han sido procesadas correctamente"
+            : `Se procesaron ${canjesAValidar.length} de ${availableCanjes.length} canjes exitosamente`,
         });
       }, 1000);
 
