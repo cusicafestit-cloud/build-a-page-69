@@ -1,1 +1,4 @@
 project_id = "zhvfoyglmdhsmavzbevc"
+
+[functions.notificar-error-canje]
+verify_jwt = false

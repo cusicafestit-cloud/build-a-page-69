@@ -184,9 +184,12 @@ export type Database = {
           correo: string | null
           created_at: string | null
           diferencia_precio: number | null
+          email_error_enviado: boolean | null
+          ERROR_TP: boolean | null
           estado: string | null
           evento_original_id: string
           evento_tp_id: string | null
+          fecha_email_error: string | null
           fecha_procesado: string | null
           fecha_solicitud: string | null
           id: string
@@ -196,6 +199,7 @@ export type Database = {
           nombre_asistente: string | null
           notas_admin: string | null
           procesado_por: string | null
+          response_tp: string | null
           ticket_ids: string[] | null
           ticket_tp_id: string | null
           tipo_ticket_original_id: string
@@ -209,9 +213,12 @@ export type Database = {
           correo?: string | null
           created_at?: string | null
           diferencia_precio?: number | null
+          email_error_enviado?: boolean | null
+          ERROR_TP?: boolean | null
           estado?: string | null
           evento_original_id: string
           evento_tp_id?: string | null
+          fecha_email_error?: string | null
           fecha_procesado?: string | null
           fecha_solicitud?: string | null
           id?: string
@@ -221,6 +228,7 @@ export type Database = {
           nombre_asistente?: string | null
           notas_admin?: string | null
           procesado_por?: string | null
+          response_tp?: string | null
           ticket_ids?: string[] | null
           ticket_tp_id?: string | null
           tipo_ticket_original_id: string
@@ -234,9 +242,12 @@ export type Database = {
           correo?: string | null
           created_at?: string | null
           diferencia_precio?: number | null
+          email_error_enviado?: boolean | null
+          ERROR_TP?: boolean | null
           estado?: string | null
           evento_original_id?: string
           evento_tp_id?: string | null
+          fecha_email_error?: string | null
           fecha_procesado?: string | null
           fecha_solicitud?: string | null
           id?: string
@@ -246,6 +257,7 @@ export type Database = {
           nombre_asistente?: string | null
           notas_admin?: string | null
           procesado_por?: string | null
+          response_tp?: string | null
           ticket_ids?: string[] | null
           ticket_tp_id?: string | null
           tipo_ticket_original_id?: string
@@ -838,6 +850,41 @@ export type Database = {
             columns: ["usuario_id"]
             isOneToOne: false
             referencedRelation: "usuarios_sistema"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logs_notificaciones_canje: {
+        Row: {
+          canje_id: string | null
+          created_at: string | null
+          email_enviado_a: string | null
+          error_mensaje: string | null
+          estado: string | null
+          id: string
+        }
+        Insert: {
+          canje_id?: string | null
+          created_at?: string | null
+          email_enviado_a?: string | null
+          error_mensaje?: string | null
+          estado?: string | null
+          id?: string
+        }
+        Update: {
+          canje_id?: string | null
+          created_at?: string | null
+          email_enviado_a?: string | null
+          error_mensaje?: string | null
+          estado?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logs_notificaciones_canje_canje_id_fkey"
+            columns: ["canje_id"]
+            isOneToOne: false
+            referencedRelation: "canjes"
             referencedColumns: ["id"]
           },
         ]
