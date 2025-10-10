@@ -31,6 +31,9 @@ type Exchange = {
   requestDate: string;
   processedDate?: string;
   reason?: string;
+  emailErrorEnviado?: boolean;
+  errorTp?: boolean;
+  canjeadoTp?: boolean;
 };
 
 type Attendee = {
@@ -142,6 +145,9 @@ const Exchanges = () => {
           motivo,
           created_at,
           updated_at,
+          email_error_enviado,
+          ERROR_TP,
+          canjeado_tp,
           evento_original:eventos!evento_original_id(nombre),
           tipo_ticket_original:tipos_tickets!tipo_ticket_original_id(tipo)
         `)
@@ -159,7 +165,10 @@ const Exchanges = () => {
         status: exchange.estado as "pending" | "approved" | "rejected" | "completed",
         requestDate: exchange.created_at,
         processedDate: exchange.updated_at !== exchange.created_at ? exchange.updated_at : undefined,
-        reason: exchange.motivo
+        reason: exchange.motivo,
+        emailErrorEnviado: exchange.email_error_enviado || false,
+        errorTp: exchange.ERROR_TP || false,
+        canjeadoTp: exchange.canjeado_tp || false
       }));
     },
   });
@@ -730,21 +739,24 @@ const Exchanges = () => {
                     <TableHead>Asistente</TableHead>
                     <TableHead>Evento Original</TableHead>
                     <TableHead>Estado</TableHead>
+                    <TableHead className="text-center">Error Email</TableHead>
+                    <TableHead className="text-center">Error TP</TableHead>
+                    <TableHead className="text-center">Canjeado TP</TableHead>
                     <TableHead>Fecha Solicitud</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 {isLoading ? (
                   <TableSkeleton 
-                    columns={5} 
+                    columns={8} 
                     rows={5}
-                    headers={["Asistente", "Evento Original", "Estado", "Fecha Solicitud", "Acciones"]}
+                    headers={["Asistente", "Evento Original", "Estado", "Error Email", "Error TP", "Canjeado TP", "Fecha Solicitud", "Acciones"]}
                   />
                 ) : (
                   <TableBody>
                     {filteredExchanges.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
+                      <TableCell colSpan={8} className="text-center py-8">
                         <div className="text-muted-foreground">
                           {searchTerm || filterStatus !== "all" 
                             ? "No se encontraron canjes con los filtros aplicados"
@@ -769,6 +781,27 @@ const Exchanges = () => {
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(exchange.status)}</TableCell>
+                        <TableCell className="text-center">
+                          {exchange.emailErrorEnviado ? (
+                            <Check className="w-5 h-5 text-green-500 mx-auto" />
+                          ) : (
+                            <X className="w-5 h-5 text-muted-foreground mx-auto" />
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {exchange.errorTp ? (
+                            <Check className="w-5 h-5 text-red-500 mx-auto" />
+                          ) : (
+                            <X className="w-5 h-5 text-muted-foreground mx-auto" />
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {exchange.canjeadoTp ? (
+                            <Check className="w-5 h-5 text-green-500 mx-auto" />
+                          ) : (
+                            <X className="w-5 h-5 text-muted-foreground mx-auto" />
+                          )}
+                        </TableCell>
                         <TableCell>
                           {new Date(exchange.requestDate).toLocaleDateString()}
                         </TableCell>
