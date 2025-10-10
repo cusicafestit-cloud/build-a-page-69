@@ -275,16 +275,16 @@ const Exchanges = () => {
 
   // Filtrar datos para los searchboxes
   const filteredAttendees = attendees.filter(attendee => 
-    attendee.nombre.toLowerCase().includes(attendeeSearchTerm.toLowerCase()) ||
-    attendee.email.toLowerCase().includes(attendeeSearchTerm.toLowerCase())
+    attendee.nombre?.toLowerCase().includes(attendeeSearchTerm.toLowerCase()) ||
+    attendee.email?.toLowerCase().includes(attendeeSearchTerm.toLowerCase())
   );
 
   const filteredOriginalEvents = events.filter(event => 
-    event.nombre.toLowerCase().includes(originalEventSearchTerm.toLowerCase())
+    event.nombre?.toLowerCase().includes(originalEventSearchTerm.toLowerCase())
   );
 
   const filteredTargetEvents = events.filter(event => 
-    event.nombre.toLowerCase().includes(targetEventSearchTerm.toLowerCase()) &&
+    event.nombre?.toLowerCase().includes(targetEventSearchTerm.toLowerCase()) &&
     event.id !== newExchange.originalEventId // No permitir el mismo evento
   );
 
