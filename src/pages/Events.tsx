@@ -75,7 +75,7 @@ const Events = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('eventos')
-        .select('id, nombre, fecha, estado, tp_id')
+        .select('id, nombre, fecha, estado, tp_id, canjes_habilitados')
         .order('fecha', { ascending: true });
       
       if (error) throw error;
@@ -86,7 +86,7 @@ const Events = () => {
         name: event.nombre,
         date: event.fecha,
         status: event.estado,
-        enabled_for_exchanges: false, // Default value since column doesn't exist
+        enabled_for_exchanges: event.canjes_habilitados || false,
         tp_id: event.tp_id,
         ticketTypes: [] // Will be populated separately
       }));
@@ -304,22 +304,30 @@ const Events = () => {
     deleteEventMutation.mutate(eventId);
   };
 
-  // Toggle exchanges enabled mutation - Disabled since column doesn't exist
+  // Toggle exchanges enabled mutation
   const toggleExchangesMutation = useMutation({
     mutationFn: async ({ eventId, enabled }: { eventId: string; enabled: boolean }) => {
-      // Column doesn't exist in database, return mock data
+      const { error } = await supabase
+        .from('eventos')
+        .update({ canjes_habilitados: enabled })
+        .eq('id', eventId);
+      
+      if (error) throw error;
+      
       toast({
-        title: "Función no disponible",
-        description: "La columna canjes_habilitados no existe en la base de datos",
-        variant: "destructive",
+        title: enabled ? "Canjes habilitados" : "Canjes deshabilitados",
+        description: `Los canjes han sido ${enabled ? 'habilitados' : 'deshabilitados'} para este evento.`,
       });
-      throw new Error("Column not available");
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
     },
     onError: (error) => {
-      // Error already shown in mutationFn
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la configuración de canjes.",
+        variant: "destructive",
+      });
     },
   });
 
