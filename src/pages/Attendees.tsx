@@ -36,6 +36,9 @@ const Attendees = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [isNewAttendeeOpen, setIsNewAttendeeOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedAttendee, setSelectedAttendee] = useState<Attendee | null>(null);
   
   const [newAttendee, setNewAttendee] = useState({
     nombre: "",
@@ -44,6 +47,13 @@ const Attendees = () => {
     documentoIdentidad: "",
     fechaNacimiento: "",
     ciudad: ""
+  });
+
+  const [editAttendee, setEditAttendee] = useState({
+    nombre: "",
+    email: "",
+    telefono: "",
+    estado: ""
   });
 
 
@@ -135,6 +145,56 @@ const Attendees = () => {
       toast({
         title: "Error",
         description: "No se pudo registrar el asistente. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleViewAttendee = (attendee: Attendee) => {
+    setSelectedAttendee(attendee);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleEditAttendee = (attendee: Attendee) => {
+    setSelectedAttendee(attendee);
+    setEditAttendee({
+      nombre: attendee.name,
+      email: attendee.email,
+      telefono: attendee.phone,
+      estado: attendee.status
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateAttendee = async () => {
+    if (!selectedAttendee) return;
+
+    try {
+      const { error } = await supabase
+        .from("asistentes")
+        .update({
+          nombre: editAttendee.nombre,
+          email: editAttendee.email,
+          telefono: editAttendee.telefono,
+          estado: editAttendee.estado
+        })
+        .eq('id', selectedAttendee.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Asistente actualizado",
+        description: `${editAttendee.nombre} ha sido actualizado exitosamente.`,
+      });
+
+      setIsEditDialogOpen(false);
+      // Refrescar la lista
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating attendee:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el asistente. Inténtalo de nuevo.",
         variant: "destructive",
       });
     }
@@ -392,6 +452,7 @@ const Attendees = () => {
                                 size="sm"
                                 className="h-8 w-8 p-0"
                                 title="Ver información"
+                                onClick={() => handleViewAttendee(attendee)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -400,6 +461,7 @@ const Attendees = () => {
                                 size="sm"
                                 className="h-8 w-8 p-0"
                                 title="Editar asistente"
+                                onClick={() => handleEditAttendee(attendee)}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -414,6 +476,131 @@ const Attendees = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* View Attendee Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Información del Asistente
+              </DialogTitle>
+            </DialogHeader>
+            {selectedAttendee && (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Nombre</Label>
+                    <p className="font-medium">{selectedAttendee.name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Email</Label>
+                    <p className="font-medium">{selectedAttendee.email}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Teléfono</Label>
+                    <p className="font-medium">{selectedAttendee.phone}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Estado</Label>
+                    <div className="mt-1">{getStatusBadge(selectedAttendee.status)}</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Evento</Label>
+                    <p className="font-medium">{selectedAttendee.event}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Tipo de Ticket</Label>
+                    <p className="font-medium">{selectedAttendee.ticketType}</p>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Fecha de Registro</Label>
+                  <p className="font-medium">
+                    {new Date(selectedAttendee.registrationDate).toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Attendee Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="w-5 h-5" />
+                Editar Asistente
+              </DialogTitle>
+              <DialogDescription>
+                Actualiza la información del asistente.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-nombre">Nombre Completo *</Label>
+                <Input
+                  id="edit-nombre"
+                  value={editAttendee.nombre}
+                  onChange={(e) => setEditAttendee({ ...editAttendee, nombre: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email *</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editAttendee.email}
+                  onChange={(e) => setEditAttendee({ ...editAttendee, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-telefono">Teléfono *</Label>
+                <Input
+                  id="edit-telefono"
+                  value={editAttendee.telefono}
+                  onChange={(e) => setEditAttendee({ ...editAttendee, telefono: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-estado">Estado</Label>
+                <Select
+                  value={editAttendee.estado}
+                  onValueChange={(value) => setEditAttendee({ ...editAttendee, estado: value })}
+                >
+                  <SelectTrigger id="edit-estado">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="confirmed">Confirmado</SelectItem>
+                    <SelectItem value="pending">Pendiente</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleUpdateAttendee}
+                disabled={!editAttendee.nombre || !editAttendee.email || !editAttendee.telefono}
+              >
+                Guardar Cambios
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
