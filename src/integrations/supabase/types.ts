@@ -592,7 +592,6 @@ export type Database = {
       eventos: {
         Row: {
           canjes_habilitados: boolean | null
-          capacidad: number
           created_at: string | null
           descripcion: string | null
           estado: string | null
@@ -608,7 +607,6 @@ export type Database = {
         }
         Insert: {
           canjes_habilitados?: boolean | null
-          capacidad: number
           created_at?: string | null
           descripcion?: string | null
           estado?: string | null
@@ -624,7 +622,6 @@ export type Database = {
         }
         Update: {
           canjes_habilitados?: boolean | null
-          capacidad?: number
           created_at?: string | null
           descripcion?: string | null
           estado?: string | null
@@ -1424,18 +1421,6 @@ export type Database = {
           canjes_rechazados: number | null
           tiempo_promedio_procesamiento_horas: number | null
           total_canjes: number | null
-        }
-        Relationships: []
-      }
-      vista_estadisticas_eventos: {
-        Row: {
-          capacidad_total: number | null
-          eventos_activos: number | null
-          eventos_completados: number | null
-          eventos_proximos: number | null
-          tasa_ocupacion_promedio: number | null
-          tickets_vendidos_total: number | null
-          total_eventos: number | null
         }
         Relationships: []
       }

@@ -57,7 +57,6 @@ const Events = () => {
 
   const [newEvent, setNewEvent] = useState({
     name: "",
-    capacity: "",
     tp_id: "",
     ticketTypes: [] as Array<{ type: string; color: string }>,
     enabledForExchanges: false,
@@ -135,9 +134,6 @@ const Events = () => {
       if (!eventData.name) {
         throw new Error("El nombre del evento es requerido");
       }
-      if (!eventData.capacity) {
-        throw new Error("La capacidad del evento es requerida");
-      }
 
       const { data, error } = await supabase
         .from('eventos')
@@ -145,7 +141,6 @@ const Events = () => {
           nombre: eventData.name,
           fecha: new Date().toISOString().split('T')[0], // Default to today
           lugar: eventData.venue || 'Por definir', // Campo requerido
-          capacidad: parseInt(eventData.capacity) || 0,
           precio: 0, // Campo requerido - precio por defecto
           estado: 'proximo', // Usar el valor por defecto de la BD
           tp_id: eventData.tp_id || null
@@ -165,7 +160,6 @@ const Events = () => {
       setIsNewEventOpen(false);
       setNewEvent({
         name: "",
-        capacity: "",
         tp_id: "",
         ticketTypes: [],
         enabledForExchanges: false,
@@ -599,34 +593,18 @@ const Events = () => {
                       />
                     </div>
                     
-                    {/* Campos Capacidad y TP ID en la misma fila */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="capacity" className="text-sm font-medium">
-                          Capacidad
-                        </Label>
-                        <Input
-                          id="capacity"
-                          type="number"
-                          value={newEvent.capacity}
-                          onChange={(e) => setNewEvent({ ...newEvent, capacity: e.target.value })}
-                          className="w-full"
-                          placeholder="Ej: 5000"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="tp_id" className="text-sm font-medium">
-                          TP ID
-                        </Label>
-                        <Input
-                          id="tp_id"
-                          value={newEvent.tp_id}
-                          onChange={(e) => setNewEvent({ ...newEvent, tp_id: e.target.value })}
-                          className="w-full"
-                          placeholder="Ej: ROCK2025"
-                        />
-                      </div>
+                    {/* Campo TP ID */}
+                    <div className="space-y-2">
+                      <Label htmlFor="tp_id" className="text-sm font-medium">
+                        TP ID
+                      </Label>
+                      <Input
+                        id="tp_id"
+                        value={newEvent.tp_id}
+                        onChange={(e) => setNewEvent({ ...newEvent, tp_id: e.target.value })}
+                        className="w-full"
+                        placeholder="Ej: ROCK2025"
+                      />
                     </div>
                   </div>
                 </div>
