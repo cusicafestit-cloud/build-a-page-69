@@ -27,6 +27,7 @@ const TicketExchange = () => {
   const [loading, setLoading] = useState(false);
   const [attendeeData, setAttendeeData] = useState<AttendeeData | null>(null);
   const [availableCanjes, setAvailableCanjes] = useState<CanjeData[]>([]);
+  const [processedCanjes, setProcessedCanjes] = useState<any[]>([]);
   const [eventData, setEventData] = useState<EventData | null>(null);
   const [ticketTypeData, setTicketTypeData] = useState<TicketTypeData | null>(null);
   const [selectedCanje, setSelectedCanje] = useState<CanjeData | null>(null);
@@ -164,6 +165,9 @@ const TicketExchange = () => {
     setConfirming(true);
 
     try {
+      // Guardar información de los canjes antes de actualizarlos
+      setProcessedCanjes(availableCanjes);
+      
       // Actualizar estado de todos los canjes a "canjeado"
       const canjeIds = availableCanjes.map(canje => canje.id);
       
@@ -410,15 +414,57 @@ const TicketExchange = () => {
                   ¡Canje Exitoso!
                 </h3>
                 <p className="text-gray-600 text-sm mb-6 leading-relaxed">
-                  Tu solicitud de canje ha sido creada exitosamente. 
-                  Te enviaremos un correo con los datos del canje.
+                  Tu solicitud de canje ha sido procesada exitosamente. 
+                  <strong> Te enviaremos un correo electrónico con toda la información de tu canje.</strong>
                 </p>
                 
                 <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-                  <h4 className="font-medium text-gray-800 mb-2">Detalles del canje:</h4>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <p><strong>Total de canjes:</strong> {availableCanjes.length}</p>
-                    <p><strong>Estado:</strong> Canjeado</p>
+                  <h4 className="font-medium text-gray-800 mb-3">Resumen de tu canje:</h4>
+                  
+                  {/* Agrupar canjes por evento */}
+                  {processedCanjes.reduce((acc: any[], canje: any) => {
+                    const eventoNombre = canje.evento_original?.nombre || 'Sin evento';
+                    const existing = acc.find(item => item.evento === eventoNombre);
+                    
+                    if (existing) {
+                      existing.tickets.push({
+                        tipo: canje.tipo_ticket_original?.tipo || 'Sin tipo',
+                        cantidad: canje.cantidad || 1
+                      });
+                    } else {
+                      acc.push({
+                        evento: eventoNombre,
+                        tickets: [{
+                          tipo: canje.tipo_ticket_original?.tipo || 'Sin tipo',
+                          cantidad: canje.cantidad || 1
+                        }]
+                      });
+                    }
+                    return acc;
+                  }, []).map((grupo: any, index: number) => (
+                    <div key={index} className="mb-4 last:mb-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="w-4 h-4 text-gray-500" />
+                        <p className="font-semibold text-gray-700">{grupo.evento}</p>
+                      </div>
+                      <div className="ml-6 space-y-1">
+                        {grupo.tickets.map((ticket: any, ticketIndex: number) => (
+                          <div key={ticketIndex} className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">• {ticket.tipo}</span>
+                            <Badge variant="secondary" className="text-xs">
+                              {ticket.cantidad} ticket{ticket.cantidad > 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700">Total de canjes:</span>
+                      <span className="font-semibold text-gray-800">{processedCanjes.length}</span>
+                    </div>
                   </div>
                 </div>
 
