@@ -308,6 +308,41 @@ const Exchanges = () => {
     }
 
     try {
+      // 1. Verificar que el asistente existe
+      const { data: attendeeExists, error: attendeeError } = await supabase
+        .from('asistentes')
+        .select('id, nombre, email')
+        .eq('email', newExchange.attendeeEmail)
+        .maybeSingle();
+
+      if (attendeeError) throw attendeeError;
+
+      if (!attendeeExists) {
+        toast({
+          title: "Error",
+          description: "No se encontró un asistente con ese correo electrónico.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // 2. Verificar si tiene canjes disponibles
+      const { data: availableExchanges, error: exchangeError } = await supabase
+        .from('canjes')
+        .select('id, estado, evento_destino:eventos!evento_destino_id(nombre)')
+        .eq('correo', newExchange.attendeeEmail)
+        .eq('estado', 'pendiente');
+
+      if (exchangeError) throw exchangeError;
+
+      if (availableExchanges && availableExchanges.length > 0) {
+        toast({
+          title: "Aviso",
+          description: `Este asistente tiene ${availableExchanges.length} canje(s) pendiente(s). Se procederá a crear uno nuevo.`,
+          variant: "default"
+        });
+      }
+
       // Obtener los tipos de ticket del evento destino
       const { data: targetTicketTypes, error: fetchError } = await supabase
         .from('tipos_tickets')
