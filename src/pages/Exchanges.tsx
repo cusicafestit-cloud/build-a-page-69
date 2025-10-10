@@ -125,7 +125,7 @@ const Exchanges = () => {
     enabled: !!newExchange.originalEventId,
   });
 
-  const { data: exchanges = [], isLoading } = useQuery({
+  const { data: exchanges = [], isLoading, refetch } = useQuery({
     queryKey: ["exchanges"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -176,6 +176,8 @@ const Exchanges = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "disponible":
+        return <Badge className="bg-blue-500 text-white hover:bg-blue-600"><CheckCircle className="w-3 h-3 mr-1" />Disponible</Badge>;
       case "pending":
         return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Pendiente</Badge>;
       case "approved":
@@ -184,6 +186,12 @@ const Exchanges = () => {
         return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Rechazado</Badge>;
       case "completed":
         return <Badge className="bg-primary text-primary-foreground"><CheckCircle className="w-3 h-3 mr-1" />Completado</Badge>;
+      case "canjeados":
+        return <Badge className="bg-green-600 text-white hover:bg-green-700"><CheckCircle className="w-3 h-3 mr-1" />Canjeados</Badge>;
+      case "esperando_tp":
+        return <Badge className="bg-yellow-500 text-white hover:bg-yellow-600"><Clock className="w-3 h-3 mr-1" />Esperando TP</Badge>;
+      case "canjeado":
+        return <Badge className="bg-green-600 text-white hover:bg-green-700"><CheckCircle className="w-3 h-3 mr-1" />Canjeado</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -366,6 +374,9 @@ const Exchanges = () => {
         title: "Canje creado",
         description: `Se crearon ${newExchange.selectedTicketTypes.length} solicitud(es) de canje exitosamente.`,
       });
+      
+      // Refrescar la lista de canjes
+      refetch();
       
       setIsNewExchangeOpen(false);
       setNewExchange({
