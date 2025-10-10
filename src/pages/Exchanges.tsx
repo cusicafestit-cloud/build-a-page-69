@@ -139,24 +139,30 @@ const Exchanges = () => {
           id,
           nombre_asistente,
           apellido_asistente,
+          correo,
+          cantidad,
           estado,
           motivo,
           created_at,
-          updated_at
+          updated_at,
+          evento_original:eventos!evento_original_id(nombre),
+          tipo_ticket_original:tipos_tickets!tipo_ticket_original_id(tipo),
+          evento_destino:eventos!evento_destino_id(nombre),
+          tipo_ticket_destino:tipos_tickets!tipo_ticket_destino_id(tipo)
         `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       
       // Transform data to match Exchange type
-      return data.map(exchange => ({
+      return data.map((exchange: any) => ({
         id: exchange.id,
         attendeeName: `${exchange.nombre_asistente || ''} ${exchange.apellido_asistente || ''}`.trim() || 'Sin nombre',
-        attendeeEmail: 'Sin email', // Will be populated when relations are fixed
-        originalEvent: 'Sin evento', // Will be populated when relations are fixed
-        originalTicketType: 'Sin tipo', // Will be populated when relations are fixed
-        targetEvent: 'Sin evento', // Will be populated when relations are fixed
-        targetTicketType: 'Sin tipo', // Will be populated when relations are fixed
+        attendeeEmail: exchange.correo || 'Sin email',
+        originalEvent: exchange.evento_original?.nombre || 'Sin evento',
+        originalTicketType: `${exchange.tipo_ticket_original?.tipo || 'Sin tipo'} (${exchange.cantidad || 1})`,
+        targetEvent: exchange.evento_destino?.nombre || 'Sin evento',
+        targetTicketType: exchange.tipo_ticket_destino?.tipo || 'Sin tipo',
         status: exchange.estado as "pending" | "approved" | "rejected" | "completed",
         requestDate: exchange.created_at,
         processedDate: exchange.updated_at !== exchange.created_at ? exchange.updated_at : undefined,
