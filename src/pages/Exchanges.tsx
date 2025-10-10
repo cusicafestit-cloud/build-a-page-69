@@ -36,6 +36,7 @@ type Exchange = {
 type Attendee = {
   id: string;
   nombre: string;
+  apellido: string;
   email: string;
 };
 
@@ -73,6 +74,7 @@ const Exchanges = () => {
   const [newExchange, setNewExchange] = useState({
     attendeeId: "",
     attendeeName: "",
+    attendeeApellido: "",
     attendeeEmail: "",
     originalEventId: "",
     selectedTicketTypes: [] as SelectedTicketType[],
@@ -91,7 +93,7 @@ const Exchanges = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("asistentes")
-        .select("id, nombre, email")
+        .select("id, nombre, apellido, email")
         .order("nombre");
       if (error) throw error;
       return data as Attendee[];
@@ -211,10 +213,11 @@ const Exchanges = () => {
       ...newExchange,
       attendeeId: attendee.id,
       attendeeName: attendee.nombre,
+      attendeeApellido: attendee.apellido || '',
       attendeeEmail: attendee.email
     });
     setAttendeeSearchOpen(false);
-    setAttendeeSearchTerm(`${attendee.nombre} (${attendee.email})`);
+    setAttendeeSearchTerm(`${attendee.nombre} ${attendee.apellido || ''} (${attendee.email})`);
   };
 
   const handleSelectOriginalEvent = (event: Event) => {
@@ -291,7 +294,7 @@ const Exchanges = () => {
       // 1. Verificar que el asistente existe
       const { data: attendeeExists, error: attendeeError } = await supabase
         .from('asistentes')
-        .select('id, nombre, email')
+        .select('id, nombre, apellido, email')
         .eq('email', newExchange.attendeeEmail)
         .maybeSingle();
 
@@ -345,7 +348,7 @@ const Exchanges = () => {
           .from('canjes')
           .insert({
             nombre_asistente: newExchange.attendeeName,
-            apellido_asistente: '',
+            apellido_asistente: newExchange.attendeeApellido,
             correo: newExchange.attendeeEmail,
             asistente_id: newExchange.attendeeId,
             evento_original_id: newExchange.originalEventId,
@@ -383,6 +386,7 @@ const Exchanges = () => {
       setNewExchange({
         attendeeId: "",
         attendeeName: "",
+        attendeeApellido: "",
         attendeeEmail: "",
         originalEventId: "",
         selectedTicketTypes: [],
