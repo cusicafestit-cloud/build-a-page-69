@@ -309,7 +309,7 @@ const Exchanges = () => {
       // 2. Verificar si tiene canjes disponibles
       const { data: availableExchanges, error: exchangeError } = await supabase
         .from('canjes')
-        .select('id, estado, evento_destino:eventos!evento_destino_id(nombre)')
+        .select('id, estado')
         .eq('correo', newExchange.attendeeEmail)
         .eq('estado', 'pendiente');
 
