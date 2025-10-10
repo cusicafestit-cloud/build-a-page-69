@@ -343,26 +343,52 @@ const Exchanges = () => {
         return;
       }
 
+      // Obtener información del evento y tipos de ticket
+      const { data: eventInfo, error: eventInfoError } = await supabase
+        .from('eventos')
+        .select('tp_id')
+        .eq('id', newExchange.originalEventId)
+        .single();
+
+      if (eventInfoError) throw eventInfoError;
+
       // Usar el primer tipo de ticket del evento
       const targetTicketTypeId = targetTicketTypes[0].id;
 
       // Crear un registro de canje por cada tipo de ticket seleccionado
       const promises = newExchange.selectedTicketTypes.map(async (ticketType) => {
+        // Obtener información del tipo de ticket
+        const { data: ticketTypeInfo } = await supabase
+          .from('tipos_tickets')
+          .select('tp_id')
+          .eq('id', ticketType.id)
+          .single();
+
         const { error } = await supabase
           .from('canjes')
           .insert({
             nombre_asistente: newExchange.attendeeName,
-            apellido_asistente: '', // Campo requerido
-            correo: newExchange.attendeeEmail, // Campo crítico para RLS
+            apellido_asistente: '',
+            correo: newExchange.attendeeEmail,
             asistente_id: newExchange.attendeeId,
             evento_original_id: newExchange.originalEventId,
             tipo_ticket_original_id: ticketType.id,
-            evento_destino_id: newExchange.originalEventId, // Usar el mismo evento
+            evento_destino_id: newExchange.originalEventId,
             tipo_ticket_destino_id: targetTicketTypeId,
             cantidad: ticketType.cantidad,
             motivo: newExchange.reason || null,
             estado: 'disponible',
-            diferencia_precio: 0
+            diferencia_precio: 0,
+            fecha_solicitud: new Date().toISOString(),
+            evento_tp_id: eventInfo?.tp_id || null,
+            ticket_tp_id: ticketTypeInfo?.tp_id || null,
+            notas_admin: null,
+            fecha_procesado: null,
+            procesado_por: null,
+            metodo_pago_diferencia: null,
+            ticket_ids: [],
+            invoice_id: null,
+            canjeado_tp: false
           });
         
         if (error) throw error;
