@@ -116,9 +116,7 @@ const TicketExchange = () => {
         .select(`
           *,
           evento_original:eventos!evento_original_id(*),
-          evento_destino:eventos!evento_destino_id(*),
-          tipo_ticket_original:tipos_tickets!tipo_ticket_original_id(*),
-          tipo_ticket_destino:tipos_tickets!tipo_ticket_destino_id(*)
+          tipo_ticket_original:tipos_tickets!tipo_ticket_original_id(*)
         `)
         .eq('asistente_id', attendee.id)
         .eq('estado', 'disponible');
@@ -129,11 +127,10 @@ const TicketExchange = () => {
         return;
       }
 
-      // Filtrar canjes donde ambos eventos tengan canjes habilitados
+      // Filtrar canjes donde el evento original tenga canjes habilitados
       const canjesHabilitados = canjes?.filter((canje: any) => {
         const eventoOriginalHabilitado = canje.evento_original?.canjes_habilitados === true;
-        const eventoDestinoHabilitado = canje.evento_destino?.canjes_habilitados === true;
-        return eventoOriginalHabilitado && eventoDestinoHabilitado;
+        return eventoOriginalHabilitado;
       }) || [];
 
       if (canjesHabilitados.length === 0) {
@@ -362,14 +359,14 @@ const TicketExchange = () => {
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-500" />
                           <span className="font-medium text-gray-800">
-                            {canje.evento_destino?.nombre}
+                            {canje.evento_original?.nombre}
                           </span>
                         </div>
                         
                         <div className="flex items-center gap-2">
                           <Ticket className="w-4 h-4 text-gray-500" />
                           <span className="text-sm text-gray-600">
-                            {canje.tipo_ticket_destino?.tipo}
+                            {canje.tipo_ticket_original?.tipo}
                           </span>
                         </div>
 

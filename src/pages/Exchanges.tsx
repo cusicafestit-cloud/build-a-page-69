@@ -141,9 +141,7 @@ const Exchanges = () => {
           created_at,
           updated_at,
           evento_original:eventos!evento_original_id(nombre),
-          tipo_ticket_original:tipos_tickets!tipo_ticket_original_id(tipo),
-          evento_destino:eventos!evento_destino_id(nombre),
-          tipo_ticket_destino:tipos_tickets!tipo_ticket_destino_id(tipo)
+          tipo_ticket_original:tipos_tickets!tipo_ticket_original_id(tipo)
         `)
         .order('created_at', { ascending: false });
       
@@ -325,25 +323,7 @@ const Exchanges = () => {
         });
       }
 
-      // Obtener los tipos de ticket del evento original (usaremos el mismo evento)
-      const { data: targetTicketTypes, error: fetchError } = await supabase
-        .from('tipos_tickets')
-        .select('id, tipo')
-        .eq('evento_id', newExchange.originalEventId)
-        .limit(1);
-
-      if (fetchError) throw fetchError;
-      
-      if (!targetTicketTypes || targetTicketTypes.length === 0) {
-        toast({
-          title: "Error",
-          description: "El evento no tiene tipos de ticket disponibles.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Obtener información del evento y tipos de ticket
+      // Obtener información del evento
       const { data: eventInfo, error: eventInfoError } = await supabase
         .from('eventos')
         .select('tp_id')
@@ -351,9 +331,6 @@ const Exchanges = () => {
         .single();
 
       if (eventInfoError) throw eventInfoError;
-
-      // Usar el primer tipo de ticket del evento
-      const targetTicketTypeId = targetTicketTypes[0].id;
 
       // Crear un registro de canje por cada tipo de ticket seleccionado
       const promises = newExchange.selectedTicketTypes.map(async (ticketType) => {
@@ -373,8 +350,6 @@ const Exchanges = () => {
             asistente_id: newExchange.attendeeId,
             evento_original_id: newExchange.originalEventId,
             tipo_ticket_original_id: ticketType.id,
-            evento_destino_id: newExchange.originalEventId,
-            tipo_ticket_destino_id: targetTicketTypeId,
             cantidad: ticketType.cantidad,
             motivo: newExchange.reason || null,
             estado: 'disponible',

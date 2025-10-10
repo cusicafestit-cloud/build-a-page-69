@@ -182,7 +182,6 @@ export type Database = {
           created_at: string | null
           diferencia_precio: number | null
           estado: string | null
-          evento_destino_id: string
           evento_original_id: string
           evento_tp_id: string | null
           fecha_procesado: string | null
@@ -196,7 +195,6 @@ export type Database = {
           procesado_por: string | null
           ticket_ids: string[] | null
           ticket_tp_id: string | null
-          tipo_ticket_destino_id: string
           tipo_ticket_original_id: string
           updated_at: string | null
         }
@@ -209,7 +207,6 @@ export type Database = {
           created_at?: string | null
           diferencia_precio?: number | null
           estado?: string | null
-          evento_destino_id: string
           evento_original_id: string
           evento_tp_id?: string | null
           fecha_procesado?: string | null
@@ -223,7 +220,6 @@ export type Database = {
           procesado_por?: string | null
           ticket_ids?: string[] | null
           ticket_tp_id?: string | null
-          tipo_ticket_destino_id: string
           tipo_ticket_original_id: string
           updated_at?: string | null
         }
@@ -236,7 +232,6 @@ export type Database = {
           created_at?: string | null
           diferencia_precio?: number | null
           estado?: string | null
-          evento_destino_id?: string
           evento_original_id?: string
           evento_tp_id?: string | null
           fecha_procesado?: string | null
@@ -250,7 +245,6 @@ export type Database = {
           procesado_por?: string | null
           ticket_ids?: string[] | null
           ticket_tp_id?: string | null
-          tipo_ticket_destino_id?: string
           tipo_ticket_original_id?: string
           updated_at?: string | null
         }
@@ -260,13 +254,6 @@ export type Database = {
             columns: ["asistente_id"]
             isOneToOne: false
             referencedRelation: "asistentes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "canjes_evento_destino_id_fkey"
-            columns: ["evento_destino_id"]
-            isOneToOne: false
-            referencedRelation: "eventos"
             referencedColumns: ["id"]
           },
           {
@@ -281,13 +268,6 @@ export type Database = {
             columns: ["procesado_por"]
             isOneToOne: false
             referencedRelation: "usuarios_sistema"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "canjes_tipo_ticket_destino_id_fkey"
-            columns: ["tipo_ticket_destino_id"]
-            isOneToOne: false
-            referencedRelation: "tipos_tickets"
             referencedColumns: ["id"]
           },
           {
