@@ -71,9 +71,9 @@ const Attendees = () => {
       // Transform data to match Attendee type
       return data.map(attendee => ({
         id: attendee.id,
-        name: attendee.nombre,
-        email: attendee.email,
-        phone: attendee.telefono,
+        name: attendee.nombre || '',
+        email: attendee.email || '',
+        phone: attendee.telefono || '',
         event: attendee.eventos?.nombre || 'Sin evento',
         ticketType: attendee.tipos_tickets?.tipo || 'Sin tipo',
         status: attendee.estado as "confirmed" | "pending" | "cancelled",
@@ -83,9 +83,9 @@ const Attendees = () => {
   });
 
   const filteredAttendees = attendees.filter(attendee => {
-    const matchesSearch = attendee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         attendee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         attendee.event.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (attendee.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                         (attendee.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                         (attendee.event?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     
     const matchesFilter = filterStatus === "all" || attendee.status === filterStatus;
     
