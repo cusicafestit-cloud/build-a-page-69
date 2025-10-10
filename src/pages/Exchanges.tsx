@@ -174,8 +174,7 @@ const Exchanges = () => {
   const filteredExchanges = exchanges.filter(exchange => {
     const matchesSearch = exchange.attendeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          exchange.attendeeEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         exchange.originalEvent.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         exchange.targetEvent.toLowerCase().includes(searchTerm.toLowerCase());
+                         exchange.originalEvent.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesFilter = filterStatus === "all" || exchange.status === filterStatus;
     
@@ -746,7 +745,6 @@ const Exchanges = () => {
                   <TableRow>
                     <TableHead>Asistente</TableHead>
                     <TableHead>Evento Original</TableHead>
-                    <TableHead>Evento Destino</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Fecha Solicitud</TableHead>
                     <TableHead>Motivo</TableHead>
@@ -755,15 +753,15 @@ const Exchanges = () => {
                 </TableHeader>
                 {isLoading ? (
                   <TableSkeleton 
-                    columns={7} 
+                    columns={6} 
                     rows={5}
-                    headers={["Asistente", "Evento Original", "Tipo Original", "Evento Destino", "Tipo Destino", "Estado", "Acciones"]}
+                    headers={["Asistente", "Evento Original", "Estado", "Fecha Solicitud", "Motivo", "Acciones"]}
                   />
                 ) : (
                   <TableBody>
                     {filteredExchanges.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8">
                         <div className="text-muted-foreground">
                           {searchTerm || filterStatus !== "all" 
                             ? "No se encontraron canjes con los filtros aplicados"
@@ -785,12 +783,6 @@ const Exchanges = () => {
                           <div>
                             <div className="font-medium">{exchange.originalEvent}</div>
                             <div className="text-sm text-muted-foreground">{exchange.originalTicketType}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{exchange.targetEvent}</div>
-                            <div className="text-sm text-muted-foreground">{exchange.targetTicketType}</div>
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(exchange.status)}</TableCell>
