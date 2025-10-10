@@ -507,17 +507,6 @@ const Exchanges = () => {
                     </div>
                   </div>
                 )}
-
-                {/* Campo de Motivo */}
-                <div className="space-y-2">
-                  <Label htmlFor="reason">Motivo del Canje</Label>
-                  <Input
-                    id="reason"
-                    value={newExchange.reason}
-                    onChange={(e) => setNewExchange({ ...newExchange, reason: e.target.value })}
-                    placeholder="Describe la razón del canje..."
-                  />
-                </div>
               </div>
               <DialogFooter>
                 <Button 
