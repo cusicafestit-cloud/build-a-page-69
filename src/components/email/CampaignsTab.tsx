@@ -163,7 +163,7 @@ export const CampaignsTab = () => {
         campana_id: campaign.id,
         suscriptor_id: attendee.id,
         email_destinatario: attendee.email,
-        estado: 'pendiente',
+        estado: 'enviado',
       }));
 
       const { error: enviosError } = await supabase
