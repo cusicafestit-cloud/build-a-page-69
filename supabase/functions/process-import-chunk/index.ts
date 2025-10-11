@@ -206,10 +206,10 @@ serve(async (req) => {
         
         procesados++
         
-      } catch (error) {
+      } catch (error: any) {
         errores.push({
           fila: job.registros_inicio + i + 2,
-          error: error.message,
+          error: error.message || String(error),
           email: extractValue(row, columnMapping.email) || 'N/A'
         })
       }
@@ -258,12 +258,12 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fatal:', error)
     
     return new Response(JSON.stringify({ 
-      error: error.message,
-      stack: error.stack 
+      error: error.message || String(error),
+      stack: error.stack
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -137,11 +137,12 @@ export const CampaignsTab = () => {
       const { data: campaign, error: campaignError } = await supabase
         .from("campanas_email")
         .insert({
-          nombre: campaignName,
           asunto: campaignSubject,
           plantilla_id: selectedTemplateId,
+          contenido: campaignSubject,
           contenido_html: template.contenido_html,
-          destinatarios_total: selectedAttendees.length,
+          creado_por: (await supabase.auth.getUser()).data.user?.id || '',
+          audiencia: 'seleccionados',
           enviados: 0,
           abiertos: 0,
           clicks: 0,
