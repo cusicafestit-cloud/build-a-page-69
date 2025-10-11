@@ -140,16 +140,18 @@ export const CampaignsTab = () => {
       const { data: campaign, error: campaignError } = await supabase
         .from("campanas_email")
         .insert({
+          nombre: campaignName,
           asunto: campaignSubject,
           plantilla_id: selectedTemplateId,
           contenido: campaignSubject,
           contenido_html: template.contenido_html,
           creado_por: user?.id || null,
           audiencia: 'todos',
+          destinatarios_total: selectedAttendees.length,
           enviados: 0,
           abiertos: 0,
           clicks: 0,
-          estado: 'borrador',
+          estado: 'enviando',
         })
         .select()
         .single();
@@ -161,7 +163,7 @@ export const CampaignsTab = () => {
       
       const envios = selectedAttendeesData.map(attendee => ({
         campana_id: campaign.id,
-        suscriptor_id: attendee.id,
+        suscriptor_id: null,
         email_destinatario: attendee.email,
         estado: 'enviado',
       }));
@@ -172,13 +174,23 @@ export const CampaignsTab = () => {
 
       if (enviosError) throw enviosError;
 
+      // Llamar edge function para enviar emails
+      const { error: sendError } = await supabase.functions.invoke('send-campaign-emails', {
+        body: { campaign_id: campaign.id }
+      });
+
+      if (sendError) {
+        console.error('Error calling send-campaign-emails:', sendError);
+        throw new Error(`Error enviando correos: ${sendError.message}`);
+      }
+
       return campaign;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       toast({
-        title: "Campaña creada",
-        description: `La campaña "${campaignName}" ha sido guardada como borrador con ${selectedAttendees.length} destinatarios.`,
+        title: "Campaña creada y enviada",
+        description: `La campaña "${campaignName}" se está enviando a ${selectedAttendees.length} destinatarios.`,
       });
       
       // Resetear formulario
