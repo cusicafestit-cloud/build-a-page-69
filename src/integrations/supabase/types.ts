@@ -107,7 +107,7 @@ export type Database = {
           configuracion_envio: Json | null
           contenido: string
           contenido_html: string | null
-          creado_por: string
+          creado_por: string | null
           created_at: string | null
           desuscritos: number | null
           enviados: number | null
@@ -129,7 +129,7 @@ export type Database = {
           configuracion_envio?: Json | null
           contenido: string
           contenido_html?: string | null
-          creado_por: string
+          creado_por?: string | null
           created_at?: string | null
           desuscritos?: number | null
           enviados?: number | null
@@ -151,7 +151,7 @@ export type Database = {
           configuracion_envio?: Json | null
           contenido?: string
           contenido_html?: string | null
-          creado_por?: string
+          creado_por?: string | null
           created_at?: string | null
           desuscritos?: number | null
           enviados?: number | null

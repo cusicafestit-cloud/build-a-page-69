@@ -133,6 +133,9 @@ export const CampaignsTab = () => {
 
       if (templateError) throw templateError;
 
+      // Obtener usuario autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      
       // Crear campaña
       const { data: campaign, error: campaignError } = await supabase
         .from("campanas_email")
@@ -141,7 +144,7 @@ export const CampaignsTab = () => {
           plantilla_id: selectedTemplateId,
           contenido: campaignSubject,
           contenido_html: template.contenido_html,
-          creado_por: (await supabase.auth.getUser()).data.user?.id || '',
+          creado_por: user?.id || null,
           audiencia: 'todos',
           enviados: 0,
           abiertos: 0,
