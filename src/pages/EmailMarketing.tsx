@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Send, Users, FileText } from "lucide-react";
 import { TemplatesTab } from "@/components/email/TemplatesTab";
 import { CampaignsTab } from "@/components/email/CampaignsTab";
+import { CampaignHistoryTab } from "@/components/email/CampaignHistoryTab";
 
 const EmailMarketing = () => {
 
@@ -30,7 +31,7 @@ const EmailMarketing = () => {
             </TabsTrigger>
             <TabsTrigger value="subscribers" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
-              Suscriptores
+              Historial
             </TabsTrigger>
           </TabsList>
 
@@ -44,15 +45,9 @@ const EmailMarketing = () => {
             <TemplatesTab />
           </TabsContent>
 
-          {/* Tab de Suscriptores */}
+          {/* Tab de Historial de Campañas */}
           <TabsContent value="subscribers" className="space-y-6">
-            <div className="text-center py-12">
-              <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Suscriptores</h3>
-              <p className="text-muted-foreground mb-4">
-                Gestiona tu lista de suscriptores
-              </p>
-            </div>
+            <CampaignHistoryTab />
           </TabsContent>
         </Tabs>
       </div>

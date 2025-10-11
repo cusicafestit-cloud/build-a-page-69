@@ -188,9 +188,10 @@ export const CampaignsTab = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["campaigns-history"] });
       toast({
-        title: "Campaña creada y enviada",
-        description: `La campaña "${campaignName}" se está enviando a ${selectedAttendees.length} destinatarios.`,
+        title: "¡Campaña enviada!",
+        description: `La campaña "${campaignName}" se ha enviado a ${selectedAttendees.length} destinatarios exitosamente.`,
       });
       
       // Resetear formulario
@@ -437,7 +438,7 @@ export const CampaignsTab = () => {
           size="lg"
         >
           <Send className="w-4 h-4 mr-2" />
-          {createCampaignMutation.isPending ? "Creando campaña..." : "Crear Campaña (Borrador)"}
+          {createCampaignMutation.isPending ? "Enviando correos..." : "Enviar Campaña"}
         </Button>
       </div>
 
