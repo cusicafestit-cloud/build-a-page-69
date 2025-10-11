@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export const ImportSection = () => {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
 
@@ -38,51 +38,53 @@ export const ImportSection = () => {
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      setFiles(Array.from(e.target.files));
     }
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      toast.error("Por favor selecciona un archivo");
+    if (files.length === 0) {
+      toast.error("Por favor selecciona al menos un archivo");
       return;
     }
 
     setUploading(true);
 
     try {
-      const fileName = `${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("imports")
-        .upload(fileName, file);
+      for (const file of files) {
+        const fileName = `${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("imports")
+          .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("imports").getPublicUrl(fileName);
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("imports").getPublicUrl(fileName);
 
-      const { error: insertError } = await supabase
-        .from("importaciones_queue")
-        .insert({
-          archivo_nombre: file.name,
-          archivo_url: publicUrl,
-          archivo_size: file.size,
-          estado: "pendiente",
-          chunk_numero: 1,
-          chunk_total: 1,
-          registros_inicio: 0,
-          registros_fin: 0,
-        });
+        const { error: insertError } = await supabase
+          .from("importaciones_queue")
+          .insert({
+            archivo_nombre: file.name,
+            archivo_url: publicUrl,
+            archivo_size: file.size,
+            estado: "pendiente",
+            chunk_numero: 1,
+            chunk_total: 1,
+            registros_inicio: 0,
+            registros_fin: 0,
+          });
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+      }
 
-      toast.success("Archivo cargado exitosamente");
-      setFile(null);
+      toast.success(`${files.length} archivo(s) cargado(s) exitosamente`);
+      setFiles([]);
       queryClient.invalidateQueries({ queryKey: ["importaciones"] });
     } catch (error: any) {
-      toast.error(`Error al cargar archivo: ${error.message}`);
+      toast.error(`Error al cargar archivos: ${error.message}`);
     } finally {
       setUploading(false);
     }
@@ -109,29 +111,35 @@ export const ImportSection = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="file">Archivo Excel (.xlsx)</Label>
+            <Label htmlFor="file">Archivos Excel (.xlsx)</Label>
             <Input
               id="file"
               type="file"
               accept=".xlsx,.xls"
+              multiple
               onChange={handleFileChange}
               disabled={uploading}
             />
+            {files.length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                {files.length} archivo(s) seleccionado(s)
+              </div>
+            )}
           </div>
           <Button
             onClick={handleUpload}
-            disabled={!file || uploading}
+            disabled={files.length === 0 || uploading}
             className="w-full"
           >
             {uploading ? (
               <>
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Cargando...
+                Procesando {files.length} archivo(s)...
               </>
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Cargar Archivo
+                Procesar {files.length > 0 ? `${files.length} archivo(s)` : 'Archivos'}
               </>
             )}
           </Button>
