@@ -64,23 +64,38 @@ export const ImportSection = () => {
           data: { publicUrl },
         } = supabase.storage.from("imports").getPublicUrl(fileName);
 
-        const { error: insertError } = await supabase
+        const { data: queueData, error: insertError } = await supabase
           .from("importaciones_queue")
           .insert({
             archivo_nombre: file.name,
-            archivo_url: publicUrl,
+            archivo_url: fileName, // Usar fileName en lugar de publicUrl
             archivo_size: file.size,
             estado: "pendiente",
             chunk_numero: 1,
             chunk_total: 1,
             registros_inicio: 0,
             registros_fin: 0,
-          });
+          })
+          .select()
+          .single();
 
         if (insertError) throw insertError;
+
+        // Invocar la Edge Function para procesar el archivo
+        const { error: functionError } = await supabase.functions.invoke(
+          "process-import-chunk",
+          {
+            body: { queueId: queueData.id },
+          }
+        );
+
+        if (functionError) {
+          console.error("Error procesando archivo:", functionError);
+          toast.error(`Error procesando ${file.name}: ${functionError.message}`);
+        }
       }
 
-      toast.success(`${files.length} archivo(s) cargado(s) exitosamente`);
+      toast.success(`${files.length} archivo(s) procesándose exitosamente`);
       setFiles([]);
       queryClient.invalidateQueries({ queryKey: ["importaciones"] });
     } catch (error: any) {
