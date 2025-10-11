@@ -495,13 +495,6 @@ export type Database = {
             referencedRelation: "campanas_email"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "envios_email_suscriptor_id_fkey"
-            columns: ["suscriptor_id"]
-            isOneToOne: false
-            referencedRelation: "suscriptores_email"
-            referencedColumns: ["id"]
-          },
         ]
       }
       estudiantes_cursos: {
