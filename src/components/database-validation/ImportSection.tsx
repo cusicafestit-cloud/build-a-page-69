@@ -53,7 +53,11 @@ export const ImportSection = () => {
 
     try {
       for (const file of files) {
-        const fileName = `${Date.now()}_${file.name}`;
+        // Sanitizar el nombre del archivo removiendo caracteres especiales
+        const sanitizedName = file.name
+          .replace(/[^a-zA-Z0-9.-]/g, '_')
+          .replace(/_+/g, '_');
+        const fileName = `${Date.now()}-${sanitizedName}`;
         const { error: uploadError } = await supabase.storage
           .from("imports")
           .upload(fileName, file);
