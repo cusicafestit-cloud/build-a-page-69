@@ -165,15 +165,7 @@ export type Database = {
           tipo?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "campanas_email_creado_por_fkey"
-            columns: ["creado_por"]
-            isOneToOne: false
-            referencedRelation: "usuarios_sistema"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       canjes: {
         Row: {
