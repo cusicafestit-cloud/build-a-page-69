@@ -142,7 +142,7 @@ export const CampaignsTab = () => {
           contenido: campaignSubject,
           contenido_html: template.contenido_html,
           creado_por: (await supabase.auth.getUser()).data.user?.id || '',
-          audiencia: 'seleccionados',
+          audiencia: 'segmento',
           enviados: 0,
           abiertos: 0,
           clicks: 0,
