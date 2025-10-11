@@ -8,6 +8,22 @@ const corsHeaders = {
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
+// Función para reemplazar variables en el HTML
+function replaceVariables(html: string, data: any): string {
+  let result = html;
+  
+  // Reemplazar variables comunes
+  result = result.replace(/\{\{nombre\}\}/g, data.nombre || '');
+  result = result.replace(/\{\{apellido\}\}/g, data.apellido || '');
+  result = result.replace(/\{\{email\}\}/g, data.email || '');
+  result = result.replace(/\{\{evento\}\}/g, data.evento || 'Evento');
+  result = result.replace(/\{\{fecha\}\}/g, data.fecha || new Date().toLocaleDateString());
+  result = result.replace(/\{\{lugar\}\}/g, data.lugar || 'Por confirmar');
+  result = result.replace(/\{\{codigo_ticket\}\}/g, data.codigo_ticket || '');
+  
+  return result;
+}
+
 // Función para enviar email usando Resend API directamente
 async function sendEmail(to: string, subject: string, html: string) {
   const response = await fetch('https://api.resend.com/emails', {
@@ -83,10 +99,33 @@ serve(async (req) => {
     // Enviar emails en lotes pequeños para evitar rate limits
     for (const envio of envios || []) {
       try {
+        // Obtener datos del asistente
+        const { data: asistente } = await supabaseClient
+          .from('asistentes')
+          .select('nombre, apellido, email, codigo_ticket, evento_id, eventos:evento_id(nombre, fecha, lugar)')
+          .eq('email', envio.email_destinatario)
+          .single();
+
+        // Preparar datos para reemplazar variables
+        const evento = Array.isArray(asistente?.eventos) ? asistente?.eventos[0] : asistente?.eventos;
+        
+        const datos = {
+          nombre: asistente?.nombre || 'Usuario',
+          apellido: asistente?.apellido || '',
+          email: asistente?.email || envio.email_destinatario,
+          evento: evento?.nombre || 'Evento',
+          fecha: evento?.fecha ? new Date(evento.fecha).toLocaleDateString() : new Date().toLocaleDateString(),
+          lugar: evento?.lugar || 'Por confirmar',
+          codigo_ticket: asistente?.codigo_ticket || '',
+        };
+
+        // Reemplazar variables en el HTML
+        const htmlPersonalizado = replaceVariables(campaign.contenido_html, datos);
+
         await sendEmail(
           envio.email_destinatario,
           campaign.asunto,
-          campaign.contenido_html
+          htmlPersonalizado
         );
 
         console.log('Email enviado a:', envio.email_destinatario);
