@@ -17,9 +17,6 @@ function replaceVariables(html: string, data: any): string {
   result = result.replace(/\{\{apellido\}\}/g, data.apellido || '');
   result = result.replace(/\{\{email\}\}/g, data.email || '');
   result = result.replace(/\{\{evento\}\}/g, data.evento || 'Evento');
-  result = result.replace(/\{\{fecha\}\}/g, data.fecha || new Date().toLocaleDateString());
-  result = result.replace(/\{\{lugar\}\}/g, data.lugar || 'Por confirmar');
-  result = result.replace(/\{\{codigo_ticket\}\}/g, data.codigo_ticket || '');
   
   return result;
 }
@@ -54,7 +51,7 @@ serve(async (req) => {
   }
 
   try {
-    const { campaign_id } = await req.json();
+    const { campaign_id, evento_nombre } = await req.json();
 
     if (!campaign_id) {
       throw new Error('campaign_id es requerido');
@@ -102,21 +99,16 @@ serve(async (req) => {
         // Obtener datos del asistente
         const { data: asistente } = await supabaseClient
           .from('asistentes')
-          .select('nombre, apellido, email, codigo_ticket, evento_id, eventos:evento_id(nombre, fecha, lugar)')
+          .select('nombre, apellido, email')
           .eq('email', envio.email_destinatario)
           .single();
 
         // Preparar datos para reemplazar variables
-        const evento = Array.isArray(asistente?.eventos) ? asistente?.eventos[0] : asistente?.eventos;
-        
         const datos = {
           nombre: asistente?.nombre || 'Usuario',
           apellido: asistente?.apellido || '',
           email: asistente?.email || envio.email_destinatario,
-          evento: evento?.nombre || 'Evento',
-          fecha: evento?.fecha ? new Date(evento.fecha).toLocaleDateString() : new Date().toLocaleDateString(),
-          lugar: evento?.lugar || 'Por confirmar',
-          codigo_ticket: asistente?.codigo_ticket || '',
+          evento: evento_nombre || 'Evento',
         };
 
         // Reemplazar variables en el HTML

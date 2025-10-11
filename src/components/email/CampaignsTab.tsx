@@ -40,6 +40,7 @@ export const CampaignsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [campaignName, setCampaignName] = useState("");
   const [campaignSubject, setCampaignSubject] = useState("");
+  const [selectedEventId, setSelectedEventId] = useState<string>("");
 
   // Query de plantillas activas
   const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
@@ -123,6 +124,9 @@ export const CampaignsTab = () => {
       if (!campaignName.trim()) {
         throw new Error("El nombre de la campaña es requerido");
       }
+      if (!selectedEventId) {
+        throw new Error("Selecciona un evento");
+      }
 
       // Obtener plantilla
       const { data: template, error: templateError } = await supabase
@@ -136,6 +140,13 @@ export const CampaignsTab = () => {
       // Obtener usuario autenticado
       const { data: { user } } = await supabase.auth.getUser();
       
+      // Obtener evento seleccionado
+      const { data: evento } = await supabase
+        .from("eventos")
+        .select("nombre")
+        .eq("id", selectedEventId)
+        .single();
+
       // Crear campaña
       const { data: campaign, error: campaignError } = await supabase
         .from("campanas_email")
@@ -165,6 +176,9 @@ export const CampaignsTab = () => {
         suscriptor_id: null,
         email_destinatario: attendee.email,
         estado: 'enviado',
+        metadata: {
+          evento_nombre: evento?.nombre || 'Evento',
+        }
       }));
 
       const { error: enviosError } = await supabase
@@ -175,7 +189,10 @@ export const CampaignsTab = () => {
 
       // Llamar edge function para enviar emails
       const { error: sendError } = await supabase.functions.invoke('send-campaign-emails', {
-        body: { campaign_id: campaign.id }
+        body: { 
+          campaign_id: campaign.id,
+          evento_nombre: evento?.nombre || 'Evento'
+        }
       });
 
       if (sendError) {
@@ -199,6 +216,7 @@ export const CampaignsTab = () => {
       setCampaignName("");
       setCampaignSubject("");
       setSearchQuery("");
+      setSelectedEventId("");
     },
     onError: (error: any) => {
       console.error("Error creating campaign:", error);
@@ -246,25 +264,24 @@ export const CampaignsTab = () => {
   // Preview del email
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
   const firstRecipient = attendees.find(a => selectedAttendees.includes(a.id));
+  const selectedEvent = events.find(e => e.id === selectedEventId);
   
   const previewHtml = selectedTemplate 
     ? replaceTemplateVariables(selectedTemplate.contenido_html, {
         nombre: firstRecipient?.nombre || "Juan",
+        apellido: firstRecipient?.apellido || "Pérez",
         email: firstRecipient?.email || "destinatario@email.com",
-        evento: firstRecipient?.evento_nombre || "Mi Evento",
-        fecha: new Date().toLocaleDateString(),
-        lugar: "Arena México",
-        codigo_ticket: firstRecipient?.codigo_ticket || "TICK-12345"
+        evento: selectedEvent?.nombre || "Mi Evento"
       })
     : "<div style='padding: 40px; text-align: center; color: #6b7280;'><p>Selecciona una plantilla para ver el preview del email</p></div>";
 
-  const isFormValid = selectedTemplateId && campaignSubject.trim() && selectedAttendees.length > 0 && campaignName.trim();
+  const isFormValid = selectedTemplateId && campaignSubject.trim() && selectedAttendees.length > 0 && campaignName.trim() && selectedEventId;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* Columna izquierda: Formulario */}
       <div className="space-y-6">
-        {/* 1. Nombre de la campaña */}
+        {/* 1. Nombre de la campaña y evento */}
         <Card className="border-none shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -281,6 +298,19 @@ export const CampaignsTab = () => {
                 value={campaignName}
                 onChange={(e) => setCampaignName(e.target.value)}
               />
+            </div>
+            <div>
+              <Label htmlFor="event-selector">Seleccionar Evento *</Label>
+              <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+                <SelectTrigger id="event-selector">
+                  <SelectValue placeholder="Selecciona un evento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {events.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
