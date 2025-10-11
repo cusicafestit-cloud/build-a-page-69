@@ -116,6 +116,7 @@ export type Database = {
           fecha_programada: string | null
           filtros_audiencia: Json | null
           id: string
+          nombre: string | null
           plantilla_id: string | null
           rebotes: number | null
           tipo: string | null
@@ -138,6 +139,7 @@ export type Database = {
           fecha_programada?: string | null
           filtros_audiencia?: Json | null
           id?: string
+          nombre?: string | null
           plantilla_id?: string | null
           rebotes?: number | null
           tipo?: string | null
@@ -160,6 +162,7 @@ export type Database = {
           fecha_programada?: string | null
           filtros_audiencia?: Json | null
           id?: string
+          nombre?: string | null
           plantilla_id?: string | null
           rebotes?: number | null
           tipo?: string | null

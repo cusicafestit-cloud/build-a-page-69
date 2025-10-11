@@ -10,6 +10,7 @@ import { es } from "date-fns/locale";
 
 type Campaign = {
   id: string;
+  nombre?: string;
   asunto: string;
   contenido: string;
   contenido_html: string;
@@ -175,10 +176,8 @@ export const CampaignHistoryTab = () => {
                     <TableRow key={campaign.id}>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{campaign.asunto}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {campaign.contenido?.substring(0, 50)}...
-                          </div>
+                          <div className="font-medium">{campaign.nombre || campaign.asunto}</div>
+                          <div className="text-sm text-muted-foreground">{campaign.asunto}</div>
                         </div>
                       </TableCell>
                       <TableCell>

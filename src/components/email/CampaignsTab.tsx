@@ -147,7 +147,6 @@ export const CampaignsTab = () => {
           contenido_html: template.contenido_html,
           creado_por: user?.id || null,
           audiencia: 'todos',
-          destinatarios_total: selectedAttendees.length,
           enviados: 0,
           abiertos: 0,
           clicks: 0,
