@@ -17,68 +17,77 @@ export type Database = {
       asistentes: {
         Row: {
           apellido: string | null
-          ciudad: string | null
-          codigo_ticket: string
           comentarios: string | null
           como_se_entero: string | null
           created_at: string | null
+          direccion: string | null
           documento_identidad: string | null
           email: string
           estado: string | null
           evento_id: string | null
-          fecha_check_in: string | null
+          evento_nombre: string | null
+          fecha_compra: string | null
           fecha_nacimiento: string | null
           fecha_registro: string | null
           genero: string | null
           id: string
           metadata: Json | null
           nombre: string
+          seccion: string | null
           telefono: string | null
+          tiketera: string | null
           tipo_ticket_id: string | null
+          tipo_ticket_nombre: string | null
           updated_at: string | null
         }
         Insert: {
           apellido?: string | null
-          ciudad?: string | null
-          codigo_ticket: string
           comentarios?: string | null
           como_se_entero?: string | null
           created_at?: string | null
+          direccion?: string | null
           documento_identidad?: string | null
           email: string
           estado?: string | null
           evento_id?: string | null
-          fecha_check_in?: string | null
+          evento_nombre?: string | null
+          fecha_compra?: string | null
           fecha_nacimiento?: string | null
           fecha_registro?: string | null
           genero?: string | null
           id?: string
           metadata?: Json | null
           nombre: string
+          seccion?: string | null
           telefono?: string | null
+          tiketera?: string | null
           tipo_ticket_id?: string | null
+          tipo_ticket_nombre?: string | null
           updated_at?: string | null
         }
         Update: {
           apellido?: string | null
-          ciudad?: string | null
-          codigo_ticket?: string
           comentarios?: string | null
           como_se_entero?: string | null
           created_at?: string | null
+          direccion?: string | null
           documento_identidad?: string | null
           email?: string
           estado?: string | null
           evento_id?: string | null
-          fecha_check_in?: string | null
+          evento_nombre?: string | null
+          fecha_compra?: string | null
           fecha_nacimiento?: string | null
           fecha_registro?: string | null
           genero?: string | null
           id?: string
           metadata?: Json | null
           nombre?: string
+          seccion?: string | null
           telefono?: string | null
+          tiketera?: string | null
           tipo_ticket_id?: string | null
+          tipo_ticket_nombre?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1534,7 +1543,6 @@ export type Database = {
       vista_estadisticas_asistentes: {
         Row: {
           asistentes_cancelados: number | null
-          asistentes_check_in: number | null
           asistentes_confirmados: number | null
           asistentes_pendientes: number | null
           emails_unicos: number | null
