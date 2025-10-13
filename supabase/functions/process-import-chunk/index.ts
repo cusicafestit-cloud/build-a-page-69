@@ -124,6 +124,8 @@ serve(async (req) => {
           .eq('email', emailLower)
           .maybeSingle()
         
+        console.log(`🔍 Buscando email: ${emailLower} - ${existing ? 'ENCONTRADO' : 'NO ENCONTRADO (se creará nuevo)'}`)
+        
         const metadata = {
           genero_musical: generoMusical,
           show_nombre: extractShowName(job.archivo_nombre),
@@ -168,6 +170,8 @@ serve(async (req) => {
           actualizados++
         } else {
           // CREAR nuevo asistente
+          console.log(`➕ Creando nuevo registro: ${emailLower}`)
+          
           const newRecord = {
             email: emailLower,
             nombre,
@@ -186,14 +190,18 @@ serve(async (req) => {
             metadata: metadata
           }
           
+          console.log(`📦 Datos a insertar:`, JSON.stringify(newRecord, null, 2))
+          
           const { error: insertError } = await supabase
             .from('asistentes')
             .insert(newRecord)
           
           if (insertError) {
+            console.error(`❌ Error insertando ${emailLower}:`, insertError)
             throw new Error(`Error insertando: ${insertError.message}`)
           }
           
+          console.log(`✅ Nuevo registro creado exitosamente: ${emailLower}`)
           nuevos++
         }
         
