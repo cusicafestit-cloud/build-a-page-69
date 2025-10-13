@@ -453,8 +453,7 @@ const TicketExchange = () => {
                 </div>
                 <h3 className="text-xl font-medium text-gray-800 mb-4">¡Solicitud de Canje Recibida!</h3>
                 <p className="text-gray-600 text-sm mb-6 leading-relaxed">
-                  Tu solicitud de canje ha sido procesada exitosamente. 
-                  <strong> Te enviaremos un correo electrónico con toda la información de tu canje.</strong>
+                  Tu solicitud de canje ha sido recibida, te enviaremos un correo electrónico con toda la información de tu canje.
                 </p>
                 
                 <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
