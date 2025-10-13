@@ -60,6 +60,8 @@ const Attendees = () => {
   const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
   const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
   const [bulkAction, setBulkAction] = useState<'exchange' | 'refund' | 'email' | null>(null);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(20);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   
   const [newAttendee, setNewAttendee] = useState({
     nombre: "",
@@ -193,6 +195,28 @@ const Attendees = () => {
     
     return matchesSearch && matchesEvent;
   });
+
+  // Calcular paginación
+  const totalPages = Math.ceil(filteredAttendees.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedAttendees = filteredAttendees.slice(startIndex, endIndex);
+
+  // Resetear a página 1 cuando cambian los filtros
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleEventFilterChange = (value: string) => {
+    setFilterEventId(value);
+    setCurrentPage(1);
+  };
+
+  const handleRowsPerPageChange = (value: string) => {
+    setRowsPerPage(Number(value));
+    setCurrentPage(1);
+  };
 
   const handleToggleEvento = (ticketType: any) => {
     const exists = newAttendee.eventosSeleccionados.find(
@@ -454,10 +478,10 @@ const Attendees = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedAttendees.length === filteredAttendees.length) {
+    if (selectedAttendees.length === paginatedAttendees.length) {
       setSelectedAttendees([]);
     } else {
-      setSelectedAttendees(filteredAttendees.map(a => a.id));
+      setSelectedAttendees(paginatedAttendees.map(a => a.id));
     }
   };
 
@@ -707,13 +731,13 @@ const Attendees = () => {
                   <Input
                     placeholder="Buscar asistentes..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                     className="pl-10"
                   />
                 </div>
                 <select
                   value={filterEventId}
-                  onChange={(e) => setFilterEventId(e.target.value)}
+                  onChange={(e) => handleEventFilterChange(e.target.value)}
                   className="px-3 py-2 border border-input bg-background rounded-md text-sm min-w-[200px]"
                   title="Filtrar por evento"
                 >
@@ -723,6 +747,18 @@ const Attendees = () => {
                       {event.nombre}
                     </option>
                   ))}
+                </select>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => handleRowsPerPageChange(e.target.value)}
+                  className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+                  title="Filas por página"
+                >
+                  <option value="20">20 filas</option>
+                  <option value="40">40 filas</option>
+                  <option value="100">100 filas</option>
+                  <option value="200">200 filas</option>
+                  <option value="400">400 filas</option>
                 </select>
               </div>
               <div className="flex gap-2">
@@ -821,7 +857,7 @@ const Attendees = () => {
                   />
                 ) : (
                   <TableBody>
-                    {filteredAttendees.length === 0 ? (
+                    {paginatedAttendees.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8">
                           <div className="text-muted-foreground">
@@ -833,7 +869,7 @@ const Attendees = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredAttendees.map((attendee) => (
+                      paginatedAttendees.map((attendee) => (
                         <TableRow key={attendee.id}>
                           <TableCell>
                             <Checkbox
@@ -880,6 +916,58 @@ const Attendees = () => {
                 )}
               </Table>
             </div>
+            
+            {/* Paginación */}
+            {filteredAttendees.length > 0 && (
+              <div className="flex items-center justify-between px-4 py-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {startIndex + 1} a {Math.min(endIndex, filteredAttendees.length)} de {filteredAttendees.length} asistentes
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Anterior
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(pageNum)}
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
