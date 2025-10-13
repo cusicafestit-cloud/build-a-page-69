@@ -134,6 +134,8 @@ serve(async (req) => {
         
         if (existing) {
           // ACTUALIZAR TODOS los campos del Excel (excepto email que es el identificador)
+          console.log(`📝 Actualizando registro existente: ${emailLower}`)
+          
           const updates: any = { 
             nombre: nombre,
             apellido: extractValue(row, columnMapping.apellido),
@@ -150,10 +152,19 @@ serve(async (req) => {
             metadata: metadata
           }
           
-          await supabase
+          console.log(`📦 Datos a actualizar:`, JSON.stringify(updates, null, 2))
+          
+          const { error: updateError } = await supabase
             .from('asistentes')
             .update(updates)
             .eq('email', emailLower)
+          
+          if (updateError) {
+            console.error(`❌ Error actualizando ${emailLower}:`, updateError)
+            throw new Error(`Error actualizando: ${updateError.message}`)
+          }
+          
+          console.log(`✅ Registro actualizado exitosamente: ${emailLower}`)
           actualizados++
         } else {
           // CREAR nuevo asistente
