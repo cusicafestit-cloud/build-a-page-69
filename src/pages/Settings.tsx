@@ -7,11 +7,13 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Settings as SettingsIcon, Bell, Mail, Shield, Palette, Database } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Settings = () => {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   
   const [generalSettings, setGeneralSettings] = useState({
     companyName: "Cusica Events",
@@ -45,32 +47,100 @@ const Settings = () => {
     loginAttempts: "5"
   });
 
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('configuraciones_sistema')
+        .select('*');
+
+      if (error) throw error;
+
+      if (data) {
+        data.forEach((config) => {
+          const valor = config.valor || config.valor_por_defecto;
+          
+          if (config.categoria === 'general') {
+            setGeneralSettings(prev => ({
+              ...prev,
+              [config.clave]: valor
+            }));
+          } else if (config.categoria === 'notificaciones') {
+            setNotifications(prev => ({
+              ...prev,
+              [config.clave]: valor === 'true'
+            }));
+          } else if (config.categoria === 'email') {
+            setEmailSettings(prev => ({
+              ...prev,
+              [config.clave]: valor
+            }));
+          } else if (config.categoria === 'seguridad') {
+            setSecuritySettings(prev => ({
+              ...prev,
+              [config.clave]: valor === 'true' ? true : valor
+            }));
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  };
+
+  const saveSettings = async (categoria: string, settings: any) => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      for (const [key, value] of Object.entries(settings)) {
+        const { error } = await supabase
+          .from('configuraciones_sistema')
+          .upsert({
+            clave: key,
+            valor: String(value),
+            categoria,
+            actualizado_por: user?.id
+          }, {
+            onConflict: 'clave'
+          });
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Configuración guardada",
+        description: "Los cambios han sido guardados exitosamente.",
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron guardar las configuraciones.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveGeneral = () => {
-    toast({
-      title: "Configuración guardada",
-      description: "La configuración general ha sido actualizada.",
-    });
+    saveSettings('general', generalSettings);
   };
 
   const handleSaveNotifications = () => {
-    toast({
-      title: "Notificaciones actualizadas",
-      description: "Las preferencias de notificación han sido guardadas.",
-    });
+    saveSettings('notificaciones', notifications);
   };
 
   const handleSaveEmail = () => {
-    toast({
-      title: "Email configurado",
-      description: "La configuración de email ha sido actualizada.",
-    });
+    saveSettings('email', emailSettings);
   };
 
   const handleSaveSecurity = () => {
-    toast({
-      title: "Seguridad actualizada",
-      description: "Las configuraciones de seguridad han sido guardadas.",
-    });
+    saveSettings('seguridad', securitySettings);
   };
 
   return (
@@ -164,7 +234,9 @@ const Settings = () => {
                     rows={3}
                   />
                 </div>
-                <Button onClick={handleSaveGeneral}>Guardar Configuración</Button>
+                <Button onClick={handleSaveGeneral} disabled={loading}>
+                  {loading ? "Guardando..." : "Guardar Configuración"}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -225,7 +297,9 @@ const Settings = () => {
                     onCheckedChange={(checked) => setNotifications({ ...notifications, eventReminders: checked })}
                   />
                 </div>
-                <Button onClick={handleSaveNotifications}>Guardar Preferencias</Button>
+                <Button onClick={handleSaveNotifications} disabled={loading}>
+                  {loading ? "Guardando..." : "Guardar Preferencias"}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -289,7 +363,9 @@ const Settings = () => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleSaveEmail}>Guardar Configuración</Button>
+                  <Button onClick={handleSaveEmail} disabled={loading}>
+                    {loading ? "Guardando..." : "Guardar Configuración"}
+                  </Button>
                   <Button variant="outline">Probar Conexión</Button>
                 </div>
               </CardContent>
@@ -339,7 +415,9 @@ const Settings = () => {
                     className="max-w-xs"
                   />
                 </div>
-                <Button onClick={handleSaveSecurity}>Guardar Configuración</Button>
+                <Button onClick={handleSaveSecurity} disabled={loading}>
+                  {loading ? "Guardando..." : "Guardar Configuración"}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
