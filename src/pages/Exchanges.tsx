@@ -87,6 +87,7 @@ const Exchanges = () => {
     attendeeApellido: "",
     attendeeEmail: "",
     originalEventId: "",
+    targetEventId: "",
     selectedTicketTypes: [] as SelectedTicketType[],
     reason: ""
   });
@@ -94,8 +95,10 @@ const Exchanges = () => {
   // Estados para los searchboxes
   const [attendeeSearchOpen, setAttendeeSearchOpen] = useState(false);
   const [originalEventSearchOpen, setOriginalEventSearchOpen] = useState(false);
+  const [targetEventSearchOpen, setTargetEventSearchOpen] = useState(false);
   const [attendeeSearchTerm, setAttendeeSearchTerm] = useState("");
   const [originalEventSearchTerm, setOriginalEventSearchTerm] = useState("");
+  const [targetEventSearchTerm, setTargetEventSearchTerm] = useState("");
 
   // Fetch attendees from Supabase
   const { data: attendees = [] } = useQuery({
@@ -123,18 +126,18 @@ const Exchanges = () => {
   });
 
   const { data: ticketTypes = [] } = useQuery({
-    queryKey: ["ticket-types", newExchange.originalEventId],
+    queryKey: ["ticket-types", newExchange.targetEventId],
     queryFn: async () => {
-      if (!newExchange.originalEventId) return [];
+      if (!newExchange.targetEventId) return [];
       const { data, error } = await supabase
         .from("tipos_tickets")
         .select("id, tipo, tp_id, color")
-        .eq("evento_id", newExchange.originalEventId)
+        .eq("evento_id", newExchange.targetEventId)
         .order("tipo");
       if (error) throw error;
       return data as TicketType[];
     },
-    enabled: !!newExchange.originalEventId,
+    enabled: !!newExchange.targetEventId,
   });
 
   const { data: exchanges = [], isLoading, refetch } = useQuery({
@@ -301,10 +304,22 @@ const Exchanges = () => {
     setNewExchange({
       ...newExchange,
       originalEventId: event.id,
+      targetEventId: "", // Reset target event when original changes
       selectedTicketTypes: [] // Reset ticket types when event changes
     });
     setOriginalEventSearchOpen(false);
     setOriginalEventSearchTerm(event.nombre);
+    setTargetEventSearchTerm(""); // Reset target search
+  };
+
+  const handleSelectTargetEvent = (event: Event) => {
+    setNewExchange({
+      ...newExchange,
+      targetEventId: event.id,
+      selectedTicketTypes: [] // Reset ticket types when target event changes
+    });
+    setTargetEventSearchOpen(false);
+    setTargetEventSearchTerm(event.nombre);
   };
 
   const handleToggleTicketType = (ticketType: TicketType) => {
@@ -353,6 +368,15 @@ const Exchanges = () => {
       toast({
         title: "Error de validación",
         description: "Debe seleccionar un evento original.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!newExchange.targetEventId) {
+      toast({
+        title: "Error de validación",
+        description: "Debe seleccionar un evento al cual canjear.",
         variant: "destructive"
       });
       return;
@@ -466,12 +490,14 @@ const Exchanges = () => {
         attendeeApellido: "",
         attendeeEmail: "",
         originalEventId: "",
+        targetEventId: "",
         selectedTicketTypes: [],
         reason: ""
       });
       // Reset search terms
       setAttendeeSearchTerm("");
       setOriginalEventSearchTerm("");
+      setTargetEventSearchTerm("");
     } catch (error: any) {
       console.error('Error creating exchange:', error);
       toast({
@@ -490,6 +516,11 @@ const Exchanges = () => {
 
   const filteredOriginalEvents = events.filter(event => 
     event.nombre?.toLowerCase().includes(originalEventSearchTerm.toLowerCase())
+  );
+
+  const filteredTargetEvents = events.filter(event => 
+    event.nombre?.toLowerCase().includes(targetEventSearchTerm.toLowerCase()) &&
+    event.id !== newExchange.originalEventId // No mostrar el mismo evento original
   );
 
   // Realtime subscriptions
@@ -676,7 +707,7 @@ const Exchanges = () => {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    Evento Original
+                    Evento Original (del cual se hace el canje)
                   </Label>
                   <Popover open={originalEventSearchOpen} onOpenChange={setOriginalEventSearchOpen}>
                     <PopoverTrigger asChild>
@@ -733,8 +764,71 @@ const Exchanges = () => {
                   </Popover>
                 </div>
 
-                {/* Selector de Tipos de Tickets */}
+                {/* Searchbox para Evento Destino */}
                 {newExchange.originalEventId && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Repeat className="w-4 h-4" />
+                      Evento al cual canjear
+                    </Label>
+                    <Popover open={targetEventSearchOpen} onOpenChange={setTargetEventSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={targetEventSearchOpen}
+                          className="w-full justify-between"
+                        >
+                          {targetEventSearchTerm || "Seleccionar evento destino..."}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0">
+                        <Command>
+                          <CommandInput 
+                            placeholder="Buscar evento..." 
+                            value={targetEventSearchTerm}
+                            onValueChange={setTargetEventSearchTerm}
+                          />
+                          <CommandList>
+                            <CommandEmpty>No se encontraron eventos.</CommandEmpty>
+                            <CommandGroup>
+                              {filteredTargetEvents.map((event) => (
+                                <CommandItem
+                                  key={event.id}
+                                  value={event.nombre}
+                                  onSelect={() => handleSelectTargetEvent(event)}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      newExchange.targetEventId === event.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{event.nombre}</span>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Calendar className="w-3 h-3" />
+                                      {new Date(event.fecha).toLocaleDateString()}
+                                      {event.tp_id && (
+                                        <span className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">
+                                          {event.tp_id}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+
+                {/* Selector de Tipos de Tickets */}
+                {newExchange.targetEventId && (
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2">
                       <Ticket className="w-4 h-4" />
@@ -813,7 +907,7 @@ const Exchanges = () => {
               <DialogFooter>
                 <Button 
                   onClick={handleCreateExchange}
-                  disabled={!newExchange.attendeeId || !newExchange.originalEventId || newExchange.selectedTicketTypes.length === 0}
+                  disabled={!newExchange.attendeeId || !newExchange.originalEventId || !newExchange.targetEventId || newExchange.selectedTicketTypes.length === 0}
                 >
                   Crear Solicitud ({newExchange.selectedTicketTypes.length} registro{newExchange.selectedTicketTypes.length !== 1 ? 's' : ''})
                 </Button>
