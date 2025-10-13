@@ -21,7 +21,6 @@ const navItems = [
   { to: "/attendees", label: "Base de Datos", icon: Users },
   { to: "/database-validation", label: "Validación DB", icon: Database },
   { to: "/exchanges", label: "Canjes", icon: Repeat },
-  { to: "/canje", label: "Canjes Públicos", icon: Ticket },
   { to: "/refunds", label: "Reembolsos", icon: DollarSign },
   { to: "/email", label: "Email Marketing", icon: Mail },
   { to: "/academy", label: "Academy", icon: GraduationCap },
