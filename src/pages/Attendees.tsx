@@ -26,6 +26,7 @@ type Attendee = {
   email: string;
   phone: string;
   event: string;
+  eventId: string;
   ticketType: string;
   status: "confirmed" | "pending" | "cancelled";
   registrationDate: string;
@@ -36,6 +37,7 @@ const Attendees = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterEventId, setFilterEventId] = useState<string>("all");
   const [isNewAttendeeOpen, setIsNewAttendeeOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -62,6 +64,19 @@ const Attendees = () => {
 
   // Queries para datos de Supabase
 
+  const { data: events = [] } = useQuery({
+    queryKey: ["events"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('eventos')
+        .select('id, nombre')
+        .order('nombre');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: attendees = [], isLoading } = useQuery({
     queryKey: ["attendees"],
     queryFn: async () => {
@@ -75,6 +90,7 @@ const Attendees = () => {
           telefono,
           estado,
           created_at,
+          evento_id,
           eventos(nombre),
           tipos_tickets(tipo)
         `)
@@ -90,6 +106,7 @@ const Attendees = () => {
         email: attendee.email || '',
         phone: attendee.telefono || '',
         event: attendee.eventos?.nombre || 'Sin evento',
+        eventId: attendee.evento_id || '',
         ticketType: attendee.tipos_tickets?.tipo || 'Sin tipo',
         status: attendee.estado as "confirmed" | "pending" | "cancelled",
         registrationDate: new Date(attendee.created_at).toISOString().split('T')[0]
@@ -103,9 +120,19 @@ const Attendees = () => {
                          (attendee.event?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     
     const matchesFilter = filterStatus === "all" || attendee.status === filterStatus;
+    const matchesEvent = filterEventId === "all" || attendee.eventId === filterEventId;
     
-    return matchesSearch && matchesFilter;
+    return matchesSearch && matchesFilter && matchesEvent;
   });
+
+  // Agrupar asistentes por email para ver cuántos eventos ha asistido cada persona
+  const attendeesByEmail = attendees.reduce((acc, attendee) => {
+    if (!acc[attendee.email]) {
+      acc[attendee.email] = [];
+    }
+    acc[attendee.email].push(attendee);
+    return acc;
+  }, {} as Record<string, Attendee[]>);
 
   const handleCreateAttendee = async () => {
     try {
@@ -377,7 +404,7 @@ const Attendees = () => {
         <Card className="border-none shadow-lg mb-6">
           <CardHeader>
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-              <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="flex flex-col sm:flex-row gap-4 flex-1 flex-wrap">
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
@@ -390,13 +417,26 @@ const Attendees = () => {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+                  className="px-3 py-2 border border-input bg-background rounded-md text-sm min-w-[160px]"
                   title="Filtrar asistentes por estado"
                 >
                   <option value="all">Todos los estados</option>
                   <option value="confirmed">Confirmados</option>
                   <option value="pending">Pendientes</option>
                   <option value="cancelled">Cancelados</option>
+                </select>
+                <select
+                  value={filterEventId}
+                  onChange={(e) => setFilterEventId(e.target.value)}
+                  className="px-3 py-2 border border-input bg-background rounded-md text-sm min-w-[200px]"
+                  title="Filtrar por evento"
+                >
+                  <option value="all">Todos los eventos</option>
+                  {events.map((event) => (
+                    <option key={event.id} value={event.id}>
+                      {event.nombre}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="flex gap-2">
@@ -454,9 +494,21 @@ const Attendees = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredAttendees.map((attendee) => (
+                      filteredAttendees.map((attendee) => {
+                        const userEvents = attendeesByEmail[attendee.email] || [];
+                        const eventCount = userEvents.length;
+                        return (
                         <TableRow key={attendee.id}>
-                          <TableCell className="font-medium">{attendee.name}</TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                              <span>{attendee.name} {attendee.apellido}</span>
+                              {eventCount > 1 && (
+                                <span className="text-xs text-muted-foreground">
+                                  Ha asistido a {eventCount} eventos
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>{attendee.email}</TableCell>
                           <TableCell>{attendee.phone}</TableCell>
                           <TableCell>{attendee.event}</TableCell>
@@ -487,7 +539,8 @@ const Attendees = () => {
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
+                      );
+                      })
                     )}
                   </TableBody>
                 )}
