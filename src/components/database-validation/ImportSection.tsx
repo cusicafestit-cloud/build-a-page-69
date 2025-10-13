@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 export const ImportSection = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: importaciones, isLoading } = useQuery({
@@ -40,6 +41,31 @@ export const ImportSection = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setFiles(Array.from(e.target.files));
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files).filter(
+      file => file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+    );
+    
+    if (droppedFiles.length > 0) {
+      setFiles(droppedFiles);
+    } else {
+      toast.error('Por favor arrastra archivos Excel (.xlsx, .xls)');
     }
   };
 
@@ -142,17 +168,42 @@ export const ImportSection = () => {
               </a>
               {" "}para importar asistentes. Las validaciones de integridad se ejecutan automáticamente.
             </p>
-            <Input
-              id="file"
-              type="file"
-              accept=".xlsx,.xls"
-              multiple
-              onChange={handleFileChange}
-              disabled={uploading}
-            />
+            
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                isDragging
+                  ? 'border-primary bg-primary/5'
+                  : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+              } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+            >
+              <Input
+                id="file"
+                type="file"
+                accept=".xlsx,.xls"
+                multiple
+                onChange={handleFileChange}
+                disabled={uploading}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <div className="flex flex-col items-center gap-2">
+                <Upload className={`h-8 w-8 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">
+                    {isDragging ? 'Suelta los archivos aquí' : 'Arrastra archivos o haz clic para seleccionar'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Archivos Excel (.xlsx, .xls)
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             {files.length > 0 && (
               <div className="text-sm text-muted-foreground">
-                {files.length} archivo(s) seleccionado(s)
+                {files.length} archivo(s) seleccionado(s): {files.map(f => f.name).join(', ')}
               </div>
             )}
           </div>
