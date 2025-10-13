@@ -288,37 +288,87 @@ serve(async (req) => {
 
 // ============= FUNCIONES AUXILIARES =============
 
-// Convertir fecha de formato DD/MM/YYYY o DD/MM/YYYY HH:mm al formato ISO
+// Convertir fecha de múltiples formatos al formato ISO que PostgreSQL entiende
 function parseExcelDate(dateStr: string | null): string | null {
   if (!dateStr) return null
   
   try {
     const str = String(dateStr).trim()
     
-    // Si ya es ISO, devolver tal cual
-    if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
+    // Si ya es ISO válido (YYYY-MM-DD o YYYY-MM-DDTHH:mm:ss), devolver tal cual
+    if (str.match(/^\d{4}-\d{2}-\d{2}(T|\s|$)/)) {
       return str
     }
     
-    // Intentar parsear formato DD/MM/YYYY o DD/MM/YYYY HH:mm
-    const match = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?/)
+    // Si es un número (fecha de Excel como días desde 1900-01-01)
+    if (!isNaN(Number(str)) && Number(str) > 1000) {
+      const excelEpoch = new Date(1899, 11, 30) // Excel cuenta desde 1900-01-01
+      const days = Number(str)
+      const date = new Date(excelEpoch.getTime() + days * 86400000)
+      return date.toISOString().split('T')[0]
+    }
+    
+    // Formato: DD/MM/YYYY HH:mm:ss o DD/MM/YYYY HH:mm
+    let match = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/)
     if (match) {
-      const [_, day, month, year, hours, minutes] = match
-      
-      // Construir fecha ISO
+      const [_, day, month, year, hours, minutes, seconds] = match
       const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
       
       if (hours && minutes) {
-        return `${isoDate}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`
+        return `${isoDate}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${(seconds || '00').padStart(2, '0')}`
       }
       
       return isoDate
     }
     
-    console.warn(`Formato de fecha no reconocido: ${str}`)
+    // Formato: DD-MM-YYYY HH:mm:ss o DD-MM-YYYY
+    match = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/)
+    if (match) {
+      const [_, day, month, year, hours, minutes, seconds] = match
+      const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      
+      if (hours && minutes) {
+        return `${isoDate}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${(seconds || '00').padStart(2, '0')}`
+      }
+      
+      return isoDate
+    }
+    
+    // Formato: MM/DD/YYYY (formato americano) - intentar solo si el día es > 12
+    match = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+    if (match) {
+      const [_, first, second, year] = match
+      
+      // Si first > 12, probablemente es DD/MM/YYYY
+      if (Number(first) > 12) {
+        const isoDate = `${year}-${second.padStart(2, '0')}-${first.padStart(2, '0')}`
+        return isoDate
+      }
+      
+      // Si second > 12, definitivamente es MM/DD/YYYY
+      if (Number(second) > 12) {
+        const isoDate = `${year}-${first.padStart(2, '0')}-${second.padStart(2, '0')}`
+        return isoDate
+      }
+    }
+    
+    // Formato: YYYY/MM/DD
+    match = str.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/)
+    if (match) {
+      const [_, year, month, day] = match
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    }
+    
+    // Intentar parsear como Date y convertir a ISO
+    const date = new Date(str)
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0]
+    }
+    
+    console.warn(`⚠️ Formato de fecha no reconocido: ${str}`)
     return null
   } catch (e) {
-    console.error(`Error parseando fecha: ${dateStr}`, e)
+    console.error(`❌ Error parseando fecha: ${dateStr}`, e)
     return null
   }
 }
