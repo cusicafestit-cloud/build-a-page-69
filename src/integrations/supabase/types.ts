@@ -51,7 +51,29 @@ export type Database = {
           tipo_ticket_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "asistencias_asistente_id_fkey"
+            columns: ["asistente_id"]
+            isOneToOne: false
+            referencedRelation: "asistentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asistencias_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asistencias_tipo_ticket_id_fkey"
+            columns: ["tipo_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       asistentes: {
         Row: {
