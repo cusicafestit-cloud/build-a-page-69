@@ -8,6 +8,7 @@ import { DollarSign, Search, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { CreateRefundDialog } from "@/components/refunds/CreateRefundDialog";
 
 type Refund = {
   id: string;
@@ -23,15 +24,38 @@ type Refund = {
 
 const Refunds = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchAttendee, setSearchAttendee] = useState("");
+  const [searchEvent, setSearchEvent] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
-
   const { data: refunds = [], isLoading } = useQuery({
-    queryKey: ["refunds"],
+    queryKey: ["refunds", searchAttendee, searchEvent, filterStatus],
     queryFn: async () => {
-      // Simulate empty data since reembolsos table is not in generated types
-      // This will be updated when the table is properly configured
-      return [];
+      let query = supabase
+        .from("reembolsos")
+        .select(`
+          *,
+          asistente:asistentes!inner(nombre, apellido, email),
+          evento:eventos!inner(nombre),
+          tipo_ticket:tipos_tickets(tipo)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (searchAttendee) {
+        query = query.or(`asistentes.nombre.ilike.%${searchAttendee}%,asistentes.apellido.ilike.%${searchAttendee}%,asistentes.email.ilike.%${searchAttendee}%`);
+      }
+
+      if (searchEvent) {
+        query = query.ilike("eventos.nombre", `%${searchEvent}%`);
+      }
+
+      if (filterStatus !== "all") {
+        query = query.eq("estado", filterStatus);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
     },
   });
 
@@ -52,9 +76,9 @@ const Refunds = () => {
 
   const stats = [
     { title: "Total Reembolsos", value: refunds.length.toString(), icon: DollarSign },
-    { title: "Pendientes", value: refunds.filter(r => r.status === "pending").length.toString(), icon: Clock },
-    { title: "Aprobados", value: refunds.filter(r => r.status === "approved").length.toString(), icon: CheckCircle },
-    { title: "Monto Total", value: `$${refunds.reduce((sum, r) => sum + r.amount, 0).toLocaleString()}`, icon: DollarSign },
+    { title: "Pendientes", value: refunds.filter((r: any) => r.estado === "pendiente").length.toString(), icon: Clock },
+    { title: "Aprobados", value: refunds.filter((r: any) => r.estado === "aprobado").length.toString(), icon: CheckCircle },
+    { title: "Monto Total", value: `$${refunds.reduce((sum: number, r: any) => sum + (r.monto || 0), 0).toLocaleString()}`, icon: DollarSign },
   ];
 
   return (
@@ -94,16 +118,30 @@ const Refunds = () => {
         {/* Refunds Table */}
         <Card className="border-none shadow-lg">
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Solicitudes de Reembolso</CardTitle>
-              <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Buscar reembolsos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center">
+                <CardTitle>Solicitudes de Reembolso</CardTitle>
+                <CreateRefundDialog />
+              </div>
+              <div className="flex gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Buscar asistente (nombre, email)..."
+                    value={searchAttendee}
+                    onChange={(e) => setSearchAttendee(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Buscar evento..."
+                    value={searchEvent}
+                    onChange={(e) => setSearchEvent(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -113,42 +151,65 @@ const Refunds = () => {
                 <TableRow>
                   <TableHead>Asistente</TableHead>
                   <TableHead>Evento</TableHead>
+                  <TableHead>Banco</TableHead>
                   <TableHead>Monto</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Motivo</TableHead>
+                  <TableHead>Fecha Solicitud</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {refunds.map((refund) => (
-                  <TableRow key={refund.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{refund.attendeeName}</div>
-                        <div className="text-sm text-muted-foreground">{refund.attendeeEmail}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{refund.event}</div>
-                        <div className="text-sm text-muted-foreground">{refund.ticketType}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">${refund.amount}</TableCell>
-                    <TableCell>{getStatusBadge(refund.status)}</TableCell>
-                    <TableCell>{new Date(refund.requestDate).toLocaleDateString()}</TableCell>
-                    <TableCell className="max-w-xs truncate">{refund.reason}</TableCell>
-                    <TableCell>
-                      {refund.status === "pending" && (
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline">Aprobar</Button>
-                          <Button size="sm" variant="outline">Rechazar</Button>
-                        </div>
-                      )}
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      Cargando reembolsos...
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : refunds.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No se encontraron reembolsos
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  refunds.map((refund: any) => (
+                    <TableRow key={refund.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {refund.asistente?.nombre} {refund.asistente?.apellido}
+                          </div>
+                          <div className="text-sm text-muted-foreground">{refund.asistente?.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{refund.evento?.nombre}</div>
+                          <div className="text-sm text-muted-foreground">{refund.tipo_ticket?.tipo}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {refund.banco && (
+                          <div>
+                            <div className="font-medium">{refund.banco}</div>
+                            <div className="text-sm text-muted-foreground">{refund.codigo_banco}</div>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">${refund.monto?.toLocaleString()}</TableCell>
+                      <TableCell>{getStatusBadge(refund.estado)}</TableCell>
+                      <TableCell>{new Date(refund.fecha_solicitud).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {refund.estado === "pendiente" && (
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline">Aprobar</Button>
+                            <Button size="sm" variant="outline">Rechazar</Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>

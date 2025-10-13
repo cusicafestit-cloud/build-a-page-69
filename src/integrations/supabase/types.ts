@@ -1187,65 +1187,65 @@ export type Database = {
       reembolsos: {
         Row: {
           asistente_id: string
-          comision: number | null
+          banco: string | null
+          codigo_banco: string | null
           created_at: string | null
           documentos_adjuntos: string[] | null
           estado: string | null
           evento_id: string
           fecha_procesado: string | null
           fecha_solicitud: string | null
+          fecha_transferencia: string | null
           id: string
           metodo_reembolso: string | null
           monto: number
-          monto_neto: number | null
-          motivo: string
           notas_admin: string | null
+          numero_cuenta: string | null
           procesado_por: string | null
           referencia_pago: string | null
           tipo_ticket_id: string
-          tp_id: string | null
           updated_at: string | null
         }
         Insert: {
           asistente_id: string
-          comision?: number | null
+          banco?: string | null
+          codigo_banco?: string | null
           created_at?: string | null
           documentos_adjuntos?: string[] | null
           estado?: string | null
           evento_id: string
           fecha_procesado?: string | null
           fecha_solicitud?: string | null
+          fecha_transferencia?: string | null
           id?: string
           metodo_reembolso?: string | null
           monto: number
-          monto_neto?: number | null
-          motivo: string
           notas_admin?: string | null
+          numero_cuenta?: string | null
           procesado_por?: string | null
           referencia_pago?: string | null
           tipo_ticket_id: string
-          tp_id?: string | null
           updated_at?: string | null
         }
         Update: {
           asistente_id?: string
-          comision?: number | null
+          banco?: string | null
+          codigo_banco?: string | null
           created_at?: string | null
           documentos_adjuntos?: string[] | null
           estado?: string | null
           evento_id?: string
           fecha_procesado?: string | null
           fecha_solicitud?: string | null
+          fecha_transferencia?: string | null
           id?: string
           metodo_reembolso?: string | null
           monto?: number
-          monto_neto?: number | null
-          motivo?: string
           notas_admin?: string | null
+          numero_cuenta?: string | null
           procesado_por?: string | null
           referencia_pago?: string | null
           tipo_ticket_id?: string
-          tp_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
