@@ -60,7 +60,9 @@ const Attendees = () => {
     apellido: "",
     email: "",
     telefono: "",
-    estado: ""
+    estado: "",
+    eventoId: "",
+    tipoTicketId: ""
   });
 
 
@@ -93,6 +95,22 @@ const Attendees = () => {
       return data;
     },
     enabled: !!newAttendee.eventoId,
+  });
+
+  const { data: ticketTypesForEdit = [] } = useQuery({
+    queryKey: ["ticket-types-for-edit", editAttendee.eventoId],
+    queryFn: async () => {
+      if (!editAttendee.eventoId) return [];
+      const { data, error } = await supabase
+        .from('tipos_tickets')
+        .select('id, tipo, precio')
+        .eq('evento_id', editAttendee.eventoId)
+        .order('tipo');
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!editAttendee.eventoId,
   });
 
   const { data: attendees = [], isLoading } = useQuery({
@@ -227,7 +245,9 @@ const Attendees = () => {
       apellido: attendee.apellido,
       email: attendee.email,
       telefono: attendee.phone,
-      estado: attendee.status
+      estado: attendee.status,
+      eventoId: attendee.eventId,
+      tipoTicketId: "" // Se cargará cuando se seleccione el evento
     });
     setIsEditDialogOpen(true);
   };
@@ -235,15 +255,28 @@ const Attendees = () => {
   const handleUpdateAttendee = async () => {
     if (!selectedAttendee) return;
 
+    // Validación de campos obligatorios
+    if (!editAttendee.nombre || !editAttendee.apellido || !editAttendee.email || 
+        !editAttendee.telefono || !editAttendee.eventoId || !editAttendee.tipoTicketId) {
+      toast({
+        title: "Error de validación",
+        description: "Todos los campos marcados con * son obligatorios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("asistentes")
         .update({
-          nombre: editAttendee.nombre,
-          apellido: editAttendee.apellido,
-          email: editAttendee.email,
-          telefono: editAttendee.telefono,
-          estado: editAttendee.estado
+          nombre: editAttendee.nombre.trim(),
+          apellido: editAttendee.apellido.trim(),
+          email: editAttendee.email.trim().toLowerCase(),
+          telefono: editAttendee.telefono.trim(),
+          estado: editAttendee.estado,
+          evento_id: editAttendee.eventoId,
+          tipo_ticket_id: editAttendee.tipoTicketId
         })
         .eq('id', selectedAttendee.id);
 
@@ -257,11 +290,11 @@ const Attendees = () => {
       setIsEditDialogOpen(false);
       // Refrescar la lista
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating attendee:", error);
       toast({
         title: "Error",
-        description: "No se pudo actualizar el asistente. Inténtalo de nuevo.",
+        description: error.message || "No se pudo actualizar el asistente. Inténtalo de nuevo.",
         variant: "destructive",
       });
     }
@@ -748,16 +781,56 @@ const Attendees = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Selección de Evento */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-evento">Evento *</Label>
+                <Select 
+                  value={editAttendee.eventoId} 
+                  onValueChange={(value) => setEditAttendee({ ...editAttendee, eventoId: value, tipoTicketId: "" })}
+                >
+                  <SelectTrigger id="edit-evento">
+                    <SelectValue placeholder="Selecciona un evento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {events.map((event) => (
+                      <SelectItem key={event.id} value={event.id}>
+                        {event.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Selección de Tipo de Ticket */}
+              {editAttendee.eventoId && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-tipoTicket">Tipo de Ticket *</Label>
+                  <Select 
+                    value={editAttendee.tipoTicketId} 
+                    onValueChange={(value) => setEditAttendee({ ...editAttendee, tipoTicketId: value })}
+                  >
+                    <SelectTrigger id="edit-tipoTicket">
+                      <SelectValue placeholder="Selecciona un tipo de ticket" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ticketTypesForEdit.map((ticket) => (
+                        <SelectItem key={ticket.id} value={ticket.id}>
+                          {ticket.tipo} - ${ticket.precio}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                Cancelar
-              </Button>
               <Button 
                 onClick={handleUpdateAttendee}
-                disabled={!editAttendee.nombre || !editAttendee.apellido || !editAttendee.email || !editAttendee.telefono}
+                disabled={!editAttendee.nombre || !editAttendee.apellido || !editAttendee.email || 
+                         !editAttendee.telefono || !editAttendee.eventoId || !editAttendee.tipoTicketId}
               >
-                Guardar Cambios
+                Actualizar Asistente
               </Button>
             </DialogFooter>
           </DialogContent>
