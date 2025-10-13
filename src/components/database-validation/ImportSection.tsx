@@ -160,15 +160,19 @@ export const ImportSection = () => {
             <p className="text-sm text-muted-foreground">
               Usa la{" "}
               <a
-                href="https://zhvfoyglmdhsmavzbevc.supabase.co/storage/v1/object/sign/imports/Plantilla.xlsx?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8xNDg5NWY5MS1jZWJkLTQxNzEtOTQzZC03YWMxOTdhZjllMGIiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJpbXBvcnRzL1BsYW50aWxsYS54bHN4IiwiaWF0IjoxNzYwMzcxOTk4LCJleHAiOjE4MjM0NDM5OTh9.rCbK7DecN4uQX7F8WVuBVImxauzsjiDjnVGNgFLrhNw"
+                href="/Plantilla_Importacion.xlsx"
                 download
-                target="_blank"
-                rel="noopener noreferrer"
                 className="text-primary hover:underline font-medium"
               >
                 plantilla oficial
               </a>
-              {" "}para importar asistentes. Las validaciones de integridad se ejecutan automáticamente.
+              {" "}para importar asistentes.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              <strong>Columnas obligatorias:</strong> Nombre, Apellido, Nombre Evento, Email
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Las validaciones de integridad se ejecutan automáticamente después de la importación.
             </p>
             
             <div

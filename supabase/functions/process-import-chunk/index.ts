@@ -95,9 +95,12 @@ serve(async (req) => {
     
     const eventoShowsId = showsEvento?.id || null
     
-    // 8.1 Validar que el mapeo de email existe
-    if (!columnMapping.email) {
-      throw new Error('No se detectó columna de email. Verifica los encabezados del archivo o ajusta el mapeo.')
+    // 8.1 Validar que las columnas obligatorias existen
+    const camposObligatorios = ['email', 'nombre', 'apellido', 'evento_nombre']
+    const camposFaltantes = camposObligatorios.filter(campo => !columnMapping[campo])
+    
+    if (camposFaltantes.length > 0) {
+      throw new Error(`Columnas obligatorias no detectadas: ${camposFaltantes.join(', ')}. Verifica los encabezados del archivo.`)
     }
     
     // 9. Procesar registros
@@ -110,19 +113,53 @@ serve(async (req) => {
       const row = chunkRows[i]
       
       try {
+        // Validar campos obligatorios
         const email = extractValue(row, columnMapping.email)
+        const nombre = extractValue(row, columnMapping.nombre)
+        const apellido = extractValue(row, columnMapping.apellido)
+        const eventoNombre = extractValue(row, columnMapping.evento_nombre)
         
+        // Validar email
         if (!email || !isValidEmail(email)) {
           errores.push({
-            fila: job.registros_inicio + i + 2, // +2 porque Excel empieza en 1 y tiene header
+            fila: job.registros_inicio + i + 2,
             error: 'Email inválido o faltante',
             email: email || 'N/A'
           })
           continue
         }
         
+        // Validar nombre
+        if (!nombre || nombre.trim() === '') {
+          errores.push({
+            fila: job.registros_inicio + i + 2,
+            error: 'Nombre es obligatorio',
+            email: email
+          })
+          continue
+        }
+        
+        // Validar apellido
+        if (!apellido || apellido.trim() === '') {
+          errores.push({
+            fila: job.registros_inicio + i + 2,
+            error: 'Apellido es obligatorio',
+            email: email
+          })
+          continue
+        }
+        
+        // Validar nombre evento
+        if (!eventoNombre || eventoNombre.trim() === '') {
+          errores.push({
+            fila: job.registros_inicio + i + 2,
+            error: 'Nombre Evento es obligatorio',
+            email: email
+          })
+          continue
+        }
+        
         const emailLower = email.toLowerCase().trim()
-        const nombre = extractValue(row, columnMapping.nombre) || 'Sin nombre'
         
         const metadata = {
           genero_musical: generoMusical,
@@ -135,7 +172,8 @@ serve(async (req) => {
         const payload: any = {
           email: emailLower,
           nombre,
-          apellido: extractValue(row, columnMapping.apellido),
+          apellido,
+          evento_nombre: eventoNombre,
           telefono: extractValue(row, columnMapping.telefono),
           documento_identidad: extractValue(row, columnMapping.documento_identidad),
           genero: extractValue(row, columnMapping.genero),
@@ -440,6 +478,7 @@ function autoMapColumns(headers: string[]): Record<string, string[]> {
     telefono: ['phone', 'phone number', 'tel', 'telefono', 'teléfono', 'mobile', 'celular'],
     nombre: ['nombre', 'first name', 'client first name', 'given name', 'primer nombre'],
     apellido: ['apellido', 'last name', 'client last name', 'family name', 'surname'],
+    evento_nombre: ['evento', 'nombre evento', 'event', 'event name', 'show', 'concierto', 'espectaculo'],
     documento_identidad: ['document', 'document id', 'documento', 'documento id', 'dni', 'cedula', 'cédula', 'id number', 'identification'],
     fecha_nacimiento: ['birth', 'birth date', 'fecha nacimiento', 'fecha de nacimiento', 'dob', 'birthdate'],
     genero: ['gender', 'sexo', 'género', 'sex'],
