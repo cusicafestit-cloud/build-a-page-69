@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Download, Upload, Users, Plus, Eye, Edit, X } from "lucide-react";
+import { Search, Download, Upload, Users, Plus, Eye, Edit, X, Mail, DollarSign, Repeat } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +57,9 @@ const Attendees = () => {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedAttendee, setSelectedAttendee] = useState<Attendee | null>(null);
+  const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
+  const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<'exchange' | 'refund' | 'email' | null>(null);
   
   const [newAttendee, setNewAttendee] = useState({
     nombre: "",
@@ -450,6 +453,63 @@ const Attendees = () => {
     }
   };
 
+  const handleSelectAll = () => {
+    if (selectedAttendees.length === filteredAttendees.length) {
+      setSelectedAttendees([]);
+    } else {
+      setSelectedAttendees(filteredAttendees.map(a => a.id));
+    }
+  };
+
+  const handleSelectAttendee = (attendeeId: string) => {
+    if (selectedAttendees.includes(attendeeId)) {
+      setSelectedAttendees(selectedAttendees.filter(id => id !== attendeeId));
+    } else {
+      setSelectedAttendees([...selectedAttendees, attendeeId]);
+    }
+  };
+
+  const handleBulkAction = (action: 'exchange' | 'refund' | 'email') => {
+    if (selectedAttendees.length === 0) {
+      toast({
+        title: "Sin selección",
+        description: "Seleccione al menos un asistente para realizar esta acción.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setBulkAction(action);
+    setIsBulkActionsOpen(true);
+  };
+
+  const executeBulkAction = async () => {
+    const selectedAttendeesData = filteredAttendees.filter(a => selectedAttendees.includes(a.id));
+    
+    if (bulkAction === 'exchange') {
+      toast({
+        title: "Canje masivo",
+        description: `Iniciando canje para ${selectedAttendees.length} asistente(s). Esta función abrirá el módulo de canjes.`,
+      });
+      // Aquí se podría redirigir a /exchanges con los asistentes preseleccionados
+    } else if (bulkAction === 'refund') {
+      toast({
+        title: "Reembolso masivo",
+        description: `Iniciando reembolso para ${selectedAttendees.length} asistente(s). Esta función abrirá el módulo de reembolsos.`,
+      });
+      // Aquí se podría redirigir a /refunds con los asistentes preseleccionados
+    } else if (bulkAction === 'email') {
+      toast({
+        title: "Email marketing",
+        description: `Preparando envío de email para ${selectedAttendees.length} asistente(s). Esta función abrirá el módulo de email marketing.`,
+      });
+      // Aquí se podría redirigir a /email-marketing con los asistentes preseleccionados
+    }
+    
+    setIsBulkActionsOpen(false);
+    setBulkAction(null);
+    setSelectedAttendees([]);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmado":
@@ -679,6 +739,55 @@ const Attendees = () => {
           </CardHeader>
         </Card>
 
+        {/* Bulk Actions Bar */}
+        {selectedAttendees.length > 0 && (
+          <Card className="mb-4 border-primary/50 bg-primary/5">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-base">
+                    {selectedAttendees.length} asistente(s) seleccionado(s)
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedAttendees([])}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Limpiar selección
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkAction('exchange')}
+                  >
+                    <Repeat className="w-4 h-4 mr-1" />
+                    Canjear tickets
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkAction('refund')}
+                  >
+                    <DollarSign className="w-4 h-4 mr-1" />
+                    Reembolsos
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkAction('email')}
+                  >
+                    <Mail className="w-4 h-4 mr-1" />
+                    Email marketing
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Attendees Table */}
         <Card className="border-none shadow-lg">
           <CardHeader>
@@ -691,6 +800,12 @@ const Attendees = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedAttendees.length === filteredAttendees.length && filteredAttendees.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Teléfono</TableHead>
@@ -708,7 +823,7 @@ const Attendees = () => {
                   <TableBody>
                     {filteredAttendees.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
+                        <TableCell colSpan={6} className="text-center py-8">
                           <div className="text-muted-foreground">
                             {searchTerm || filterEventId !== "all" 
                               ? "No se encontraron asistentes con los filtros aplicados"
@@ -720,6 +835,12 @@ const Attendees = () => {
                     ) : (
                       filteredAttendees.map((attendee) => (
                         <TableRow key={attendee.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedAttendees.includes(attendee.id)}
+                              onCheckedChange={() => handleSelectAttendee(attendee.id)}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">
                             {attendee.nombre} {attendee.apellido}
                           </TableCell>
