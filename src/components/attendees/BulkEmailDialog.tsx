@@ -34,7 +34,7 @@ export const BulkEmailDialog = ({ isOpen, onClose, selectedAttendees }: BulkEmai
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    plantillaId: "",
+    plantillaId: "none",
     asunto: "",
     contenido: "",
     remitente: "Cusica <noreply@cusica.com>",
@@ -56,6 +56,14 @@ export const BulkEmailDialog = ({ isOpen, onClose, selectedAttendees }: BulkEmai
   });
 
   const handlePlantillaChange = (plantillaId: string) => {
+    if (plantillaId === "none") {
+      setFormData({
+        ...formData,
+        plantillaId: "none",
+      });
+      return;
+    }
+    
     const plantilla = plantillas.find((p: any) => p.id === plantillaId);
     if (plantilla) {
       setFormData({
@@ -96,7 +104,7 @@ export const BulkEmailDialog = ({ isOpen, onClose, selectedAttendees }: BulkEmai
           filtros_audiencia: {
             asistentes_ids: selectedAttendees.map(a => a.id)
           },
-          plantilla_id: formData.plantillaId || null,
+          plantilla_id: formData.plantillaId !== "none" ? formData.plantillaId : null,
           fecha_enviada: new Date().toISOString(),
         })
         .select()
@@ -145,7 +153,7 @@ export const BulkEmailDialog = ({ isOpen, onClose, selectedAttendees }: BulkEmai
       
       // Reset form
       setFormData({
-        plantillaId: "",
+        plantillaId: "none",
         asunto: "",
         contenido: "",
         remitente: "Cusica <noreply@cusica.com>",
@@ -185,7 +193,7 @@ export const BulkEmailDialog = ({ isOpen, onClose, selectedAttendees }: BulkEmai
                   <SelectValue placeholder="Seleccionar plantilla..." />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
-                  <SelectItem value="">Sin plantilla</SelectItem>
+                  <SelectItem value="none">Sin plantilla</SelectItem>
                   {plantillas.map((plantilla: any) => (
                     <SelectItem key={plantilla.id} value={plantilla.id}>
                       {plantilla.nombre}
