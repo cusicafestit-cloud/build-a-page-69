@@ -6,14 +6,17 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Settings as SettingsIcon, Bell, Mail, Shield, Palette, Database } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Settings as SettingsIcon, Bell, Mail, Shield, Palette, Database, Upload } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const Settings = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [generalSettings, setGeneralSettings] = useState({
     companyName: "Cusica Events",
@@ -63,7 +66,9 @@ const Settings = () => {
         data.forEach((config) => {
           const valor = config.valor || config.valor_por_defecto;
           
-          if (config.categoria === 'general') {
+          if (config.clave === 'logoUrl') {
+            setLogoUrl(valor);
+          } else if (config.categoria === 'general') {
             setGeneralSettings(prev => ({
               ...prev,
               [config.clave]: valor
@@ -88,6 +93,90 @@ const Settings = () => {
       }
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Por favor selecciona un archivo de imagen.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validar tamaño (máximo 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "La imagen debe ser menor a 2MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      // Eliminar logo anterior si existe
+      if (logoUrl) {
+        const oldPath = logoUrl.split('/logos/')[1];
+        if (oldPath) {
+          await supabase.storage.from('logos').remove([oldPath]);
+        }
+      }
+
+      // Subir nuevo logo
+      const fileExt = file.name.split('.').pop();
+      const fileName = `logo-${Date.now()}.${fileExt}`;
+      const { error: uploadError, data } = await supabase.storage
+        .from('logos')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Obtener URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('logos')
+        .getPublicUrl(fileName);
+
+      setLogoUrl(publicUrl);
+
+      // Guardar en configuraciones
+      await supabase
+        .from('configuraciones_sistema')
+        .upsert({
+          clave: 'logoUrl',
+          valor: publicUrl,
+          categoria: 'apariencia',
+          descripcion: 'URL del logo de la empresa'
+        }, {
+          onConflict: 'clave'
+        });
+
+      toast({
+        title: "Logo actualizado",
+        description: "El logo ha sido cambiado exitosamente.",
+      });
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo subir el logo.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -449,10 +538,38 @@ const Settings = () => {
                   <div className="space-y-2">
                     <Label htmlFor="logo-upload">Logo de la Empresa</Label>
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-                        <span className="text-white font-bold">C</span>
+                      {logoUrl ? (
+                        <img 
+                          src={logoUrl} 
+                          alt="Logo" 
+                          className="w-16 h-16 object-contain rounded-lg border border-border"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+                          <span className="text-white font-bold text-xl">C</span>
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-2">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          id="logo-upload"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                        <Button 
+                          variant="outline" 
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingLogo}
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          {uploadingLogo ? "Subiendo..." : "Cambiar Logo"}
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          PNG, JPG o WEBP (máx. 2MB)
+                        </p>
                       </div>
-                      <Button variant="outline">Cambiar Logo</Button>
                     </div>
                   </div>
                 </div>
