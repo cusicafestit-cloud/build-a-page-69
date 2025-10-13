@@ -70,7 +70,9 @@ serve(async (req) => {
     const allRows = XLSX.utils.sheet_to_json(sheet)
     
     // 5. Extraer solo el chunk asignado
-    const chunkRows = allRows.slice(job.registros_inicio, job.registros_fin + 1)
+    // Si registros_fin es 0, significa que debe procesar todas las filas disponibles
+    const endIndex = job.registros_fin === 0 ? allRows.length : job.registros_fin + 1
+    const chunkRows = allRows.slice(job.registros_inicio, endIndex)
     
     if (chunkRows.length === 0) {
       throw new Error('No hay registros en este chunk')
