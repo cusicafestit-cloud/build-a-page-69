@@ -323,8 +323,11 @@ export const ImportSection = () => {
                 <TableRow>
                   <TableHead>Archivo</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Progreso</TableHead>
-                  <TableHead>Registros</TableHead>
+                  <TableHead>Nuevos</TableHead>
+                  <TableHead>Actualizados</TableHead>
+                  <TableHead>Errores</TableHead>
+                  <TableHead>Campos Detectados</TableHead>
+                  <TableHead>Duración</TableHead>
                   <TableHead>Fecha</TableHead>
                 </TableRow>
               </TableHeader>
@@ -335,9 +338,36 @@ export const ImportSection = () => {
                       {imp.archivo_nombre}
                     </TableCell>
                     <TableCell>{getEstadoBadge(imp.estado)}</TableCell>
-                    <TableCell>{imp.progreso_porcentaje}%</TableCell>
                     <TableCell>
-                      {imp.registros_procesados} / {imp.registros_fin}
+                      <Badge variant="outline" className="bg-green-500/10">
+                        {imp.registros_nuevos || 0}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-blue-500/10">
+                        {imp.registros_actualizados || 0}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {imp.registros_con_errores > 0 ? (
+                        <Badge variant="destructive">
+                          {imp.registros_con_errores}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-xs text-muted-foreground max-w-xs truncate">
+                        {imp.campos_detectados 
+                          ? Object.keys(imp.campos_detectados).join(", ")
+                          : "-"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {imp.duracion_segundos 
+                        ? `${imp.duracion_segundos}s`
+                        : "-"}
                     </TableCell>
                     <TableCell>
                       {new Date(imp.created_at).toLocaleString("es-ES")}
