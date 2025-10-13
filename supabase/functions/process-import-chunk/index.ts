@@ -133,60 +133,50 @@ serve(async (req) => {
         }
         
         if (existing) {
-          // ACTUALIZAR solo campos vacíos
+          // ACTUALIZAR TODOS los campos desde el archivo importado
           const updates: any = { 
+            nombre: nombre, // Siempre actualizar nombre
             updated_at: new Date().toISOString(),
             metadata: metadata
           }
           
-          if (!existing.apellido && columnMapping.apellido) {
-            const apellido = extractValue(row, columnMapping.apellido)
-            if (apellido) updates.apellido = apellido
-          }
-          if (!existing.telefono && columnMapping.telefono) {
-            const telefono = extractValue(row, columnMapping.telefono)
-            if (telefono) updates.telefono = telefono
-          }
-          if (!existing.documento_identidad && columnMapping.documento_identidad) {
-            const doc = extractValue(row, columnMapping.documento_identidad)
-            if (doc) updates.documento_identidad = doc
-          }
-          if (!existing.genero && columnMapping.genero) {
-            const genero = extractValue(row, columnMapping.genero)
-            if (genero) updates.genero = genero
-          }
-          if (!existing.fecha_nacimiento && columnMapping.fecha_nacimiento) {
-            const fecha = extractValue(row, columnMapping.fecha_nacimiento)
-            if (fecha) updates.fecha_nacimiento = fecha
-          }
-          if (!existing.direccion && columnMapping.direccion) {
-            const direccion = extractValue(row, columnMapping.direccion)
-            if (direccion) updates.direccion = direccion
-          }
-          if (!existing.seccion && columnMapping.seccion) {
-            const seccion = extractValue(row, columnMapping.seccion)
-            if (seccion) updates.seccion = seccion
-          }
-          if (!existing.tiketera && columnMapping.tiketera) {
-            const tiketera = extractValue(row, columnMapping.tiketera)
-            if (tiketera) updates.tiketera = tiketera
-          }
-          if (!existing.tipo_ticket_nombre && columnMapping.tipo_ticket_nombre) {
-            const tipo = extractValue(row, columnMapping.tipo_ticket_nombre)
-            if (tipo) updates.tipo_ticket_nombre = tipo
-          }
-          if (!existing.fecha_compra && columnMapping.fecha_compra) {
-            const fechaCompra = extractValue(row, columnMapping.fecha_compra)
-            if (fechaCompra) updates.fecha_compra = fechaCompra
-          }
+          // Actualizar TODOS los campos que vienen en el Excel
+          const apellido = extractValue(row, columnMapping.apellido)
+          if (apellido) updates.apellido = apellido
           
-          if (Object.keys(updates).length > 2) { // más que updated_at y metadata
-            await supabase
-              .from('asistentes')
-              .update(updates)
-              .eq('email', emailLower)
-            actualizados++
-          }
+          const telefono = extractValue(row, columnMapping.telefono)
+          if (telefono) updates.telefono = telefono
+          
+          const documento = extractValue(row, columnMapping.documento_identidad)
+          if (documento) updates.documento_identidad = documento
+          
+          const genero = extractValue(row, columnMapping.genero)
+          if (genero) updates.genero = genero
+          
+          const fechaNac = extractValue(row, columnMapping.fecha_nacimiento)
+          if (fechaNac) updates.fecha_nacimiento = fechaNac
+          
+          const direccion = extractValue(row, columnMapping.direccion)
+          if (direccion) updates.direccion = direccion
+          
+          const seccion = extractValue(row, columnMapping.seccion)
+          if (seccion) updates.seccion = seccion
+          
+          const tiketera = extractValue(row, columnMapping.tiketera)
+          if (tiketera) updates.tiketera = tiketera
+          
+          const tipoTicket = extractValue(row, columnMapping.tipo_ticket_nombre)
+          if (tipoTicket) updates.tipo_ticket_nombre = tipoTicket
+          
+          const fechaCompra = extractValue(row, columnMapping.fecha_compra)
+          if (fechaCompra) updates.fecha_compra = fechaCompra
+          
+          // Siempre actualizar (al menos tendremos nombre, updated_at y metadata)
+          await supabase
+            .from('asistentes')
+            .update(updates)
+            .eq('email', emailLower)
+          actualizados++
         } else {
           // CREAR nuevo asistente
           const newRecord = {
