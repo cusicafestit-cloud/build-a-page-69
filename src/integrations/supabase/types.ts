@@ -17,6 +17,7 @@ export type Database = {
       asistentes: {
         Row: {
           apellido: string | null
+          codigo_ticket: string | null
           comentarios: string | null
           como_se_entero: string | null
           created_at: string | null
@@ -42,6 +43,7 @@ export type Database = {
         }
         Insert: {
           apellido?: string | null
+          codigo_ticket?: string | null
           comentarios?: string | null
           como_se_entero?: string | null
           created_at?: string | null
@@ -67,6 +69,7 @@ export type Database = {
         }
         Update: {
           apellido?: string | null
+          codigo_ticket?: string | null
           comentarios?: string | null
           como_se_entero?: string | null
           created_at?: string | null
