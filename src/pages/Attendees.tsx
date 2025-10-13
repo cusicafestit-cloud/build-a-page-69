@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Download, Upload, Users, Plus, Eye, Edit, X, Mail, DollarSign, Repeat } from "lucide-react";
+import { Search, Download, Users, Plus, Eye, Edit, X, Mail, DollarSign, Repeat } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -534,6 +534,59 @@ const Attendees = () => {
     setSelectedAttendees([]);
   };
 
+  const handleExportAttendees = () => {
+    try {
+      // Crear datos para exportar
+      const dataToExport = filteredAttendees.map(attendee => ({
+        Nombre: attendee.nombre,
+        Apellido: attendee.apellido,
+        Email: attendee.email,
+        Teléfono: attendee.telefono,
+        Documento: attendee.documentoIdentidad || '',
+        'Fecha de Nacimiento': attendee.fechaNacimiento || '',
+        Eventos: attendee.asistencias.map(a => a.evento).join(', '),
+        'Total Eventos': attendee.asistencias.length
+      }));
+
+      // Convertir a CSV
+      const headers = Object.keys(dataToExport[0] || {});
+      const csvContent = [
+        headers.join(','),
+        ...dataToExport.map(row => 
+          headers.map(header => {
+            const value = row[header as keyof typeof row];
+            // Escapar comillas y envolver en comillas si contiene comas
+            return typeof value === 'string' && value.includes(',') 
+              ? `"${value.replace(/"/g, '""')}"` 
+              : value;
+          }).join(',')
+        )
+      ].join('\n');
+
+      // Crear y descargar archivo
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `asistentes_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Exportación exitosa",
+        description: `Se exportaron ${dataToExport.length} asistente(s).`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo exportar los datos.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmado":
@@ -548,11 +601,6 @@ const Attendees = () => {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-
-  const stats = [
-    { title: "Total Asistentes", value: attendees.length.toString(), icon: Users },
-    { title: "Total Asistencias", value: attendees.reduce((acc, a) => acc + a.asistencias.length, 0).toString(), icon: Users },
-  ];
 
   return (
     <Layout>
@@ -695,32 +743,6 @@ const Attendees = () => {
           </Dialog>
         </div>
 
-        {/* Stats Grid */}
-        {isLoading ? (
-          <StatsSkeleton />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {stats.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={stat.title} className="border-none shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {stat.title}
-                  </CardTitle>
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-primary" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{stat.value}</div>
-                </CardContent>
-              </Card>
-            );
-          })}
-          </div>
-        )}
-
         {/* Filters and Actions */}
         <Card className="border-none shadow-lg mb-6">
           <CardHeader>
@@ -762,11 +784,12 @@ const Attendees = () => {
                 </select>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Importar
-                </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleExportAttendees}
+                  disabled={filteredAttendees.length === 0}
+                >
                   <Download className="w-4 h-4 mr-2" />
                   Exportar
                 </Button>
