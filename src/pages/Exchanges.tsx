@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Repeat, CheckCircle, XCircle, Clock, Plus, Search, User, Calendar, Ticket, ChevronDown, Check, X, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -80,6 +81,7 @@ const Exchanges = () => {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [exchangeToDelete, setExchangeToDelete] = useState<Exchange | null>(null);
+  const [selectedExchanges, setSelectedExchanges] = useState<string[]>([]);
 
   const [newExchange, setNewExchange] = useState({
     attendeeId: "",
@@ -632,6 +634,56 @@ const Exchanges = () => {
     }
   };
 
+  const handleSelectAll = () => {
+    if (selectedExchanges.length === filteredExchanges.length) {
+      setSelectedExchanges([]);
+    } else {
+      setSelectedExchanges(filteredExchanges.map(e => e.id));
+    }
+  };
+
+  const handleSelectExchange = (exchangeId: string) => {
+    if (selectedExchanges.includes(exchangeId)) {
+      setSelectedExchanges(selectedExchanges.filter(id => id !== exchangeId));
+    } else {
+      setSelectedExchanges([...selectedExchanges, exchangeId]);
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedExchanges.length === 0) {
+      toast({
+        title: "Sin selección",
+        description: "Seleccione al menos un canje para aprobar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('canjes')
+        .update({ estado: 'aprobado' })
+        .in('id', selectedExchanges);
+
+      if (error) throw error;
+
+      toast({
+        title: "Canjes aprobados",
+        description: `Se aprobaron ${selectedExchanges.length} canje(s) exitosamente.`,
+      });
+
+      setSelectedExchanges([]);
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron aprobar los canjes.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const stats = [
     { title: "Total Canjes", value: exchanges.length.toString(), icon: Repeat },
     { title: "Pendientes", value: exchanges.filter(e => e.status === "pending").length.toString(), icon: Clock },
@@ -964,6 +1016,39 @@ const Exchanges = () => {
           })}
         </div>
 
+        {/* Bulk Actions Bar */}
+        {selectedExchanges.length > 0 && (
+          <Card className="mb-4 border-primary/50 bg-primary/5">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-base">
+                    {selectedExchanges.length} canje(s) seleccionado(s)
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedExchanges([])}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Limpiar selección
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleBulkApprove}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Aprobar Seleccionados
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Filters */}
         <Card className="border-none shadow-lg mb-6">
           <CardHeader>
@@ -1007,6 +1092,12 @@ const Exchanges = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedExchanges.length === filteredExchanges.length && filteredExchanges.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead>Asistente</TableHead>
                     <TableHead>Evento Original</TableHead>
                     <TableHead>Estado</TableHead>
@@ -1019,15 +1110,15 @@ const Exchanges = () => {
                 </TableHeader>
                 {isLoading ? (
                   <TableSkeleton 
-                    columns={8} 
+                    columns={9} 
                     rows={5}
-                    headers={["Asistente", "Evento Original", "Estado", "Error Email", "Error TP", "Canjeado TP", "Fecha Solicitud", "Acciones"]}
+                    headers={["", "Asistente", "Evento Original", "Estado", "Error Email", "Error TP", "Canjeado TP", "Fecha Solicitud", "Acciones"]}
                   />
                 ) : (
                   <TableBody>
                     {filteredExchanges.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
+                      <TableCell colSpan={9} className="text-center py-8">
                         <div className="text-muted-foreground">
                           {searchTerm || filterStatus !== "all" 
                             ? "No se encontraron canjes con los filtros aplicados"
@@ -1041,46 +1132,69 @@ const Exchanges = () => {
                       <TableRow 
                         key={exchange.id}
                         className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => {
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedExchanges.includes(exchange.id)}
+                            onCheckedChange={() => handleSelectExchange(exchange.id)}
+                          />
+                        </TableCell>
+                        <TableCell onClick={() => {
                           setSelectedExchange(exchange);
                           setIsDetailsDialogOpen(true);
-                        }}
-                      >
-                        <TableCell>
+                        }}>
                           <div>
                             <div className="font-medium">{exchange.attendeeName}</div>
                             <div className="text-sm text-muted-foreground">{exchange.attendeeEmail}</div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={() => {
+                          setSelectedExchange(exchange);
+                          setIsDetailsDialogOpen(true);
+                        }}>
                           <div>
                             <div className="font-medium">{exchange.originalEvent}</div>
                             <div className="text-sm text-muted-foreground">{exchange.originalTicketType}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{getStatusBadge(exchange.status)}</TableCell>
-                        <TableCell className="text-center">
+                        <TableCell onClick={() => {
+                          setSelectedExchange(exchange);
+                          setIsDetailsDialogOpen(true);
+                        }}>{getStatusBadge(exchange.status)}</TableCell>
+                        <TableCell className="text-center" onClick={() => {
+                          setSelectedExchange(exchange);
+                          setIsDetailsDialogOpen(true);
+                        }}>
                           {exchange.emailErrorEnviado ? (
                             <Check className="w-5 h-5 text-green-500 mx-auto" />
                           ) : (
                             <X className="w-5 h-5 text-muted-foreground mx-auto" />
                           )}
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center" onClick={() => {
+                          setSelectedExchange(exchange);
+                          setIsDetailsDialogOpen(true);
+                        }}>
                           {exchange.errorTp ? (
                             <Check className="w-5 h-5 text-red-500 mx-auto" />
                           ) : (
                             <X className="w-5 h-5 text-muted-foreground mx-auto" />
                           )}
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center" onClick={() => {
+                          setSelectedExchange(exchange);
+                          setIsDetailsDialogOpen(true);
+                        }}>
                           {exchange.canjeadoTp ? (
                             <Check className="w-5 h-5 text-green-500 mx-auto" />
                           ) : (
                             <X className="w-5 h-5 text-muted-foreground mx-auto" />
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={() => {
+                          setSelectedExchange(exchange);
+                          setIsDetailsDialogOpen(true);
+                        }}>
                           {new Date(exchange.requestDate).toLocaleDateString()}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
