@@ -25,7 +25,7 @@ export type Database = {
           documento_identidad: string | null
           email: string
           estado: string | null
-          evento_id: string | null
+          evento_id: string
           evento_nombre: string | null
           fecha_compra: string | null
           fecha_nacimiento: string | null
@@ -37,7 +37,7 @@ export type Database = {
           seccion: string | null
           telefono: string | null
           tiketera: string | null
-          tipo_ticket_id: string | null
+          tipo_ticket_id: string
           tipo_ticket_nombre: string | null
           updated_at: string | null
         }
@@ -51,7 +51,7 @@ export type Database = {
           documento_identidad?: string | null
           email: string
           estado?: string | null
-          evento_id?: string | null
+          evento_id: string
           evento_nombre?: string | null
           fecha_compra?: string | null
           fecha_nacimiento?: string | null
@@ -63,7 +63,7 @@ export type Database = {
           seccion?: string | null
           telefono?: string | null
           tiketera?: string | null
-          tipo_ticket_id?: string | null
+          tipo_ticket_id: string
           tipo_ticket_nombre?: string | null
           updated_at?: string | null
         }
@@ -77,7 +77,7 @@ export type Database = {
           documento_identidad?: string | null
           email?: string
           estado?: string | null
-          evento_id?: string | null
+          evento_id?: string
           evento_nombre?: string | null
           fecha_compra?: string | null
           fecha_nacimiento?: string | null
@@ -89,7 +89,7 @@ export type Database = {
           seccion?: string | null
           telefono?: string | null
           tiketera?: string | null
-          tipo_ticket_id?: string | null
+          tipo_ticket_id?: string
           tipo_ticket_nombre?: string | null
           updated_at?: string | null
         }
