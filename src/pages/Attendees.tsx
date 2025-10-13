@@ -21,7 +21,9 @@ import {
 type Asistencia = {
   id: string;
   evento: string;
+  eventoTpId: string | null;
   tipoTicket: string;
+  tipoTicketTpId: string | null;
   codigoTicket: string;
   estado: string;
   eventoId: string;
@@ -145,8 +147,8 @@ const Attendees = () => {
               estado,
               evento_id,
               tipo_ticket_id,
-              eventos(nombre),
-              tipos_tickets(tipo)
+              eventos(nombre, tp_id),
+              tipos_tickets(tipo, tp_id)
             `)
             .eq('asistente_id', asistente.id);
 
@@ -163,7 +165,9 @@ const Attendees = () => {
             asistencias: (asistencias || []).map((a: any) => ({
               id: a.id,
               evento: a.eventos?.nombre || 'Sin evento',
+              eventoTpId: a.eventos?.tp_id || null,
               tipoTicket: a.tipos_tickets?.tipo || 'Sin tipo',
+              tipoTicketTpId: a.tipos_tickets?.tp_id || null,
               codigoTicket: a.codigo_ticket || '',
               estado: a.estado || 'confirmado',
               eventoId: a.evento_id,
@@ -794,9 +798,15 @@ const Attendees = () => {
                     {selectedAttendee.asistencias.map((asistencia) => (
                       <div key={asistencia.id} className="border rounded-lg p-3">
                         <div className="flex justify-between items-start">
-                          <div>
+                          <div className="flex-1">
                             <p className="font-medium">{asistencia.evento}</p>
-                            <p className="text-sm text-muted-foreground">{asistencia.tipoTicket}</p>
+                            {asistencia.eventoTpId && (
+                              <p className="text-xs text-muted-foreground">TP ID Evento: {asistencia.eventoTpId}</p>
+                            )}
+                            <p className="text-sm text-muted-foreground mt-1">{asistencia.tipoTicket}</p>
+                            {asistencia.tipoTicketTpId && (
+                              <p className="text-xs text-muted-foreground">TP ID Ticket: {asistencia.tipoTicketTpId}</p>
+                            )}
                             <p className="text-xs text-muted-foreground mt-1">
                               Código: {asistencia.codigoTicket}
                             </p>
