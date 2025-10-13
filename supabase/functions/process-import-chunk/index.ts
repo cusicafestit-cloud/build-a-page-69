@@ -118,11 +118,16 @@ serve(async (req) => {
         const nombre = extractValue(row, columnMapping.nombre) || 'Sin nombre'
         
         // Verificar si existe
-        const { data: existing } = await supabase
+        const { data: existing, error: searchError } = await supabase
           .from('asistentes')
           .select('*')
           .eq('email', emailLower)
           .maybeSingle()
+        
+        if (searchError) {
+          console.error(`❌ Error buscando email ${emailLower}:`, searchError)
+          throw new Error(`Error buscando email: ${searchError.message}`)
+        }
         
         console.log(`🔍 Buscando email: ${emailLower} - ${existing ? 'ENCONTRADO' : 'NO ENCONTRADO (se creará nuevo)'}`)
         
