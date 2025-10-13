@@ -125,6 +125,21 @@ const Exchanges = () => {
     },
   });
 
+  // Fetch asistencias of selected attendee
+  const { data: attendeeAsistencias = [] } = useQuery({
+    queryKey: ["attendee-asistencias", newExchange.attendeeId],
+    queryFn: async () => {
+      if (!newExchange.attendeeId) return [];
+      const { data, error } = await supabase
+        .from("asistencias")
+        .select("evento_id")
+        .eq("asistente_id", newExchange.attendeeId);
+      if (error) throw error;
+      return data.map(a => a.evento_id);
+    },
+    enabled: !!newExchange.attendeeId,
+  });
+
   const { data: ticketTypes = [] } = useQuery({
     queryKey: ["ticket-types", newExchange.targetEventId],
     queryFn: async () => {
@@ -294,10 +309,15 @@ const Exchanges = () => {
       attendeeId: attendee.id,
       attendeeName: attendee.nombre,
       attendeeApellido: attendee.apellido || '',
-      attendeeEmail: attendee.email
+      attendeeEmail: attendee.email,
+      originalEventId: "", // Reset evento original cuando cambia el asistente
+      targetEventId: "", // Reset evento destino cuando cambia el asistente
+      selectedTicketTypes: [] // Reset tipos de tickets cuando cambia el asistente
     });
     setAttendeeSearchOpen(false);
     setAttendeeSearchTerm(`${attendee.nombre} ${attendee.apellido || ''} (${attendee.email})`);
+    setOriginalEventSearchTerm(""); // Reset búsqueda de evento original
+    setTargetEventSearchTerm(""); // Reset búsqueda de evento destino
   };
 
   const handleSelectOriginalEvent = (event: Event) => {
@@ -514,14 +534,20 @@ const Exchanges = () => {
     attendee.email?.toLowerCase().includes(attendeeSearchTerm.toLowerCase())
   );
 
-  const filteredOriginalEvents = events.filter(event => 
-    event.nombre?.toLowerCase().includes(originalEventSearchTerm.toLowerCase())
-  );
+  // Filtrar eventos originales: solo mostrar eventos donde el asistente tiene asistencias
+  const filteredOriginalEvents = events.filter(event => {
+    const matchesSearch = event.nombre?.toLowerCase().includes(originalEventSearchTerm.toLowerCase());
+    const attendeeHasTicket = newExchange.attendeeId ? attendeeAsistencias.includes(event.id) : true;
+    return matchesSearch && attendeeHasTicket;
+  });
 
-  const filteredTargetEvents = events.filter(event => 
-    event.nombre?.toLowerCase().includes(targetEventSearchTerm.toLowerCase()) &&
-    event.id !== newExchange.originalEventId // No mostrar el mismo evento original
-  );
+  // Filtrar eventos destino: excluir el evento original y eventos donde el asistente ya tiene tickets
+  const filteredTargetEvents = events.filter(event => {
+    const matchesSearch = event.nombre?.toLowerCase().includes(targetEventSearchTerm.toLowerCase());
+    const notOriginalEvent = event.id !== newExchange.originalEventId;
+    const attendeeDoesntHaveTicket = newExchange.attendeeId ? !attendeeAsistencias.includes(event.id) : true;
+    return matchesSearch && notOriginalEvent && attendeeDoesntHaveTicket;
+  });
 
   // Realtime subscriptions
   useEffect(() => {
