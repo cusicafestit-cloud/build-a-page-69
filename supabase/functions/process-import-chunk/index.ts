@@ -364,42 +364,74 @@ serve(async (req) => {
           actualizados++
         }
         
-        // CREAR REGISTRO EN ASISTENCIAS si hay evento y ticket
-        if (eventoId && ticketEncontrado?.id) {
-          // Verificar si ya existe esta asistencia
-          const { data: existingAsistencia } = await supabase
-            .from('asistencias')
-            .select('id')
-            .eq('asistente_id', upsertedAsistente.id)
-            .eq('evento_id', eventoId)
-            .eq('tipo_ticket_id', ticketEncontrado.id)
-            .maybeSingle()
+        // CREAR REGISTRO EN ASISTENCIAS si hay evento
+        if (eventoId) {
+          // Si no hay ticket específico, buscar el primer ticket del evento
+          let ticketId = ticketEncontrado?.id
           
-          if (!existingAsistencia) {
-            const asistenciaPayload = {
-              asistente_id: upsertedAsistente.id,
-              evento_id: eventoId,
-              tipo_ticket_id: ticketEncontrado.id,
-              fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)) || new Date().toISOString(),
-              estado: 'confirmado',
-              metadata: {
-                fuente_importacion: job.archivo_nombre,
-                fecha_importacion: new Date().toISOString()
-              }
+          if (!ticketId && eventoEncontrado) {
+            // Buscar primer ticket disponible del evento
+            const { data: defaultTicket } = await supabase
+              .from('tipos_tickets')
+              .select('id')
+              .eq('evento_id', eventoId)
+              .limit(1)
+              .maybeSingle()
+            
+            if (defaultTicket) {
+              ticketId = defaultTicket.id
+              console.log(`🎫 Usando ticket por defecto ${ticketId} para ${emailLower}`)
             }
-            
-            const { error: asistenciaError } = await supabase
+          }
+          
+          if (ticketId) {
+            // Verificar si ya existe esta asistencia
+            const { data: existingAsistencia } = await supabase
               .from('asistencias')
-              .insert(asistenciaPayload)
+              .select('id')
+              .eq('asistente_id', upsertedAsistente.id)
+              .eq('evento_id', eventoId)
+              .eq('tipo_ticket_id', ticketId)
+              .maybeSingle()
             
-            if (asistenciaError) {
-              console.error(`⚠️ Error creando asistencia para ${emailLower}:`, asistenciaError.message)
+            if (!existingAsistencia) {
+              const asistenciaPayload = {
+                asistente_id: upsertedAsistente.id,
+                evento_id: eventoId,
+                tipo_ticket_id: ticketId,
+                fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)) || new Date().toISOString(),
+                estado: 'confirmado',
+                metadata: {
+                  fuente_importacion: job.archivo_nombre,
+                  fecha_importacion: new Date().toISOString(),
+                  ticket_asignado_automaticamente: !ticketEncontrado?.id
+                }
+              }
+              
+              console.log(`📝 Creando asistencia para ${emailLower}:`, JSON.stringify(asistenciaPayload, null, 2))
+              
+              const { error: asistenciaError } = await supabase
+                .from('asistencias')
+                .insert(asistenciaPayload)
+              
+              if (asistenciaError) {
+                console.error(`❌ Error creando asistencia para ${emailLower}:`, asistenciaError)
+                errores.push({
+                  fila: job.registros_inicio + i + 2,
+                  error: `Error creando asistencia: ${asistenciaError.message}`,
+                  email: emailLower
+                })
+              } else {
+                console.log(`✅ Nueva asistencia creada para ${emailLower} en evento ${eventoEncontrado?.nombre}`)
+              }
             } else {
-              console.log(`✅ Nueva asistencia creada para ${emailLower} en evento ${eventoEncontrado?.nombre}`)
+              console.log(`ℹ️ Asistencia ya existe para ${emailLower} en evento ${eventoEncontrado?.nombre}`)
             }
           } else {
-            console.log(`ℹ️ Asistencia ya existe para ${emailLower} en evento ${eventoEncontrado?.nombre}`)
+            console.warn(`⚠️ No se encontró ticket para el evento ${eventoEncontrado?.nombre}, no se creó asistencia para ${emailLower}`)
           }
+        } else {
+          console.warn(`⚠️ No hay evento para ${emailLower}, no se creó asistencia`)
         }
         
         procesados++
