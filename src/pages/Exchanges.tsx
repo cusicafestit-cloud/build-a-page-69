@@ -29,7 +29,7 @@ type Exchange = {
   attendeeEmail: string;
   originalEvent: string;
   originalTicketType: string;
-  status: "pending" | "approved" | "rejected" | "completed";
+  status: "pending" | "approved" | "rejected" | "canjeado";
   requestDate: string;
   processedDate?: string;
   reason?: string;
@@ -192,7 +192,7 @@ const Exchanges = () => {
         attendeeEmail: exchange.correo || 'Sin email',
         originalEvent: exchange.evento_original?.nombre || 'Sin evento',
         originalTicketType: `${exchange.tipo_ticket_original?.tipo || 'Sin tipo'} (${exchange.cantidad || 1})`,
-        status: exchange.estado as "pending" | "approved" | "rejected" | "completed",
+        status: (exchange.estado === "completed" ? "canjeado" : exchange.estado) as "pending" | "approved" | "rejected" | "canjeado",
         requestDate: exchange.created_at,
         processedDate: exchange.updated_at !== exchange.created_at ? exchange.updated_at : undefined,
         reason: exchange.motivo,
@@ -281,8 +281,6 @@ const Exchanges = () => {
         return <Badge className="bg-green-500 text-white hover:bg-green-600"><CheckCircle className="w-3 h-3 mr-1" />Aprobado</Badge>;
       case "rejected":
         return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Rechazado</Badge>;
-      case "completed":
-        return <Badge className="bg-primary text-primary-foreground"><CheckCircle className="w-3 h-3 mr-1" />Completado</Badge>;
       case "canjeados":
         return <Badge className="bg-green-600 text-white hover:bg-green-700"><CheckCircle className="w-3 h-3 mr-1" />Canjeados</Badge>;
       case "esperando_tp":
@@ -635,10 +633,11 @@ const Exchanges = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedExchanges.length === filteredExchanges.length) {
+    const selectableExchanges = filteredExchanges.filter(e => e.status !== "canjeado");
+    if (selectedExchanges.length === selectableExchanges.length) {
       setSelectedExchanges([]);
     } else {
-      setSelectedExchanges(filteredExchanges.map(e => e.id));
+      setSelectedExchanges(selectableExchanges.map(e => e.id));
     }
   };
 
@@ -688,7 +687,7 @@ const Exchanges = () => {
     { title: "Total Canjes", value: exchanges.length.toString(), icon: Repeat },
     { title: "Pendientes", value: exchanges.filter(e => e.status === "pending").length.toString(), icon: Clock },
     { title: "Aprobados", value: exchanges.filter(e => e.status === "approved").length.toString(), icon: CheckCircle },
-    { title: "Completados", value: exchanges.filter(e => e.status === "completed").length.toString(), icon: CheckCircle },
+    { title: "Canjeados", value: exchanges.filter(e => e.status === "canjeado").length.toString(), icon: CheckCircle },
   ];
 
   return (
@@ -1137,6 +1136,7 @@ const Exchanges = () => {
                           <Checkbox
                             checked={selectedExchanges.includes(exchange.id)}
                             onCheckedChange={() => handleSelectExchange(exchange.id)}
+                            disabled={exchange.status === "canjeado"}
                           />
                         </TableCell>
                         <TableCell onClick={() => {
@@ -1218,6 +1218,7 @@ const Exchanges = () => {
                                 setExchangeToDelete(exchange);
                                 setIsDeleteDialogOpen(true);
                               }}
+                              disabled={exchange.status === "canjeado"}
                             >
                               <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
