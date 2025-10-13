@@ -84,14 +84,19 @@ serve(async (req) => {
     
     console.log('Mapeo de columnas:', columnMapping)
     
-    // 8. Buscar evento "Shows"
+    // 8. Buscar evento "Shows" (sin fallback a UUID dummy)
     const { data: showsEvento } = await supabase
       .from('eventos')
       .select('id')
       .eq('nombre', 'Shows')
-      .single()
+      .maybeSingle()
     
-    const eventoShowsId = showsEvento?.id || '00000000-0000-0000-0000-000000000001'
+    const eventoShowsId = showsEvento?.id || null
+    
+    // 8.1 Validar que el mapeo de email existe
+    if (!columnMapping.email) {
+      throw new Error('No se detectó columna de email. Verifica los encabezados del archivo o ajusta el mapeo.')
+    }
     
     // 9. Procesar registros
     let procesados = 0
@@ -117,97 +122,68 @@ serve(async (req) => {
         const emailLower = email.toLowerCase().trim()
         const nombre = extractValue(row, columnMapping.nombre) || 'Sin nombre'
         
-        // Verificar si existe
-        const { data: existing, error: searchError } = await supabase
-          .from('asistentes')
-          .select('*')
-          .eq('email', emailLower)
-          .maybeSingle()
-        
-        if (searchError) {
-          console.error(`❌ Error buscando email ${emailLower}:`, searchError)
-          throw new Error(`Error buscando email: ${searchError.message}`)
-        }
-        
-        console.log(`🔍 Buscando email: ${emailLower} - ${existing ? 'ENCONTRADO' : 'NO ENCONTRADO (se creará nuevo)'}`)
-        
         const metadata = {
           genero_musical: generoMusical,
           show_nombre: extractShowName(job.archivo_nombre),
           fuente_importacion: job.archivo_nombre,
-          fecha_importacion: new Date().toISOString(),
-          ...(existing?.metadata as object || {})
+          fecha_importacion: new Date().toISOString()
         }
         
-        if (existing) {
-          // ACTUALIZAR TODOS los campos del Excel (excepto email que es el identificador)
-          console.log(`📝 Actualizando registro existente: ${emailLower}`)
-          
-          const updates: any = { 
-            nombre: nombre,
-            apellido: extractValue(row, columnMapping.apellido),
-            telefono: extractValue(row, columnMapping.telefono),
-            documento_identidad: extractValue(row, columnMapping.documento_identidad),
-            genero: extractValue(row, columnMapping.genero),
-            fecha_nacimiento: parseExcelDate(extractValue(row, columnMapping.fecha_nacimiento)),
-            direccion: extractValue(row, columnMapping.direccion),
-            seccion: extractValue(row, columnMapping.seccion),
-            tiketera: extractValue(row, columnMapping.tiketera),
-            tipo_ticket_nombre: extractValue(row, columnMapping.tipo_ticket_nombre),
-            fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)),
-            updated_at: new Date().toISOString(),
-            metadata: metadata
-          }
-          
-          console.log(`📦 Datos a actualizar:`, JSON.stringify(updates, null, 2))
-          
-          const { error: updateError } = await supabase
-            .from('asistentes')
-            .update(updates)
-            .eq('email', emailLower)
-          
-          if (updateError) {
-            console.error(`❌ Error actualizando ${emailLower}:`, updateError)
-            throw new Error(`Error actualizando: ${updateError.message}`)
-          }
-          
-          console.log(`✅ Registro actualizado exitosamente: ${emailLower}`)
-          actualizados++
-        } else {
-          // CREAR nuevo asistente
-          console.log(`➕ Creando nuevo registro: ${emailLower}`)
-          
-          const newRecord = {
-            email: emailLower,
-            nombre,
-            apellido: extractValue(row, columnMapping.apellido),
-            telefono: extractValue(row, columnMapping.telefono),
-            documento_identidad: extractValue(row, columnMapping.documento_identidad),
-            genero: extractValue(row, columnMapping.genero),
-            fecha_nacimiento: parseExcelDate(extractValue(row, columnMapping.fecha_nacimiento)),
-            direccion: extractValue(row, columnMapping.direccion),
-            seccion: extractValue(row, columnMapping.seccion),
-            tiketera: extractValue(row, columnMapping.tiketera),
-            tipo_ticket_nombre: extractValue(row, columnMapping.tipo_ticket_nombre),
-            fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)),
-            evento_id: eventoShowsId,
-            estado: 'confirmado',
-            metadata: metadata
-          }
-          
-          console.log(`📦 Datos a insertar:`, JSON.stringify(newRecord, null, 2))
-          
-          const { error: insertError } = await supabase
-            .from('asistentes')
-            .insert(newRecord)
-          
-          if (insertError) {
-            console.error(`❌ Error insertando ${emailLower}:`, insertError)
-            throw new Error(`Error insertando: ${insertError.message}`)
-          }
-          
-          console.log(`✅ Nuevo registro creado exitosamente: ${emailLower}`)
+        // UPSERT: insertar o actualizar en una sola operación
+        const payload: any = {
+          email: emailLower,
+          nombre,
+          apellido: extractValue(row, columnMapping.apellido),
+          telefono: extractValue(row, columnMapping.telefono),
+          documento_identidad: extractValue(row, columnMapping.documento_identidad),
+          genero: extractValue(row, columnMapping.genero),
+          fecha_nacimiento: parseExcelDate(extractValue(row, columnMapping.fecha_nacimiento)),
+          direccion: extractValue(row, columnMapping.direccion),
+          seccion: extractValue(row, columnMapping.seccion),
+          tiketera: extractValue(row, columnMapping.tiketera),
+          tipo_ticket_nombre: extractValue(row, columnMapping.tipo_ticket_nombre),
+          fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)),
+          estado: 'confirmado',
+          metadata
+        }
+        
+        // Solo incluir evento_id si existe
+        if (eventoShowsId) {
+          payload.evento_id = eventoShowsId
+        }
+        
+        console.log(`🔄 Procesando email: ${emailLower}`)
+        console.log(`📦 Payload:`, JSON.stringify(payload, null, 2))
+        
+        // Primero intentar obtener el registro existente
+        const { data: existing } = await supabase
+          .from('asistentes')
+          .select('id, created_at')
+          .eq('email', emailLower)
+          .maybeSingle()
+        
+        const { error: upsertError, data: upsertData } = await supabase
+          .from('asistentes')
+          .upsert(payload, { 
+            onConflict: 'email',
+            ignoreDuplicates: false 
+          })
+          .select('id, created_at, updated_at')
+          .single()
+        
+        if (upsertError) {
+          console.error(`❌ Error en upsert para ${emailLower}:`, upsertError)
+          throw new Error(`Error en upsert: ${upsertError.message}`)
+        }
+        
+        // Determinar si fue nuevo o actualizado
+        const wasNew = !existing
+        if (wasNew) {
+          console.log(`✅ Nuevo registro creado: ${emailLower}`)
           nuevos++
+        } else {
+          console.log(`✅ Registro actualizado: ${emailLower}`)
+          actualizados++
         }
         
         procesados++
@@ -454,31 +430,47 @@ function extractShowName(filename: string): string {
 
 function autoMapColumns(headers: string[]): Record<string, string[]> {
   const mapping: Record<string, string[]> = {}
+  const H = headers.map(h => h.toLowerCase().trim())
   
-  // Mapeo exacto según plantilla proporcionada
+  // Patrones ampliados para detectar múltiples variaciones
   const patterns = {
-    email: ['email'],
-    telefono: ['phone number'],
-    nombre: ['client first name'],
-    documento_identidad: ['document id'],
-    fecha_nacimiento: ['birth date'],
-    genero: ['gender'],
-    apellido: ['client last name'],
-    direccion: ['billing address'],
-    seccion: ['section'],
-    tiketera: ['referrer'],
-    tipo_ticket_nombre: ['section'], // Section también se mapea a tipo_ticket_nombre
-    fecha_compra: ['fecha de compra']
+    email: ['email', 'e-mail', 'correo', 'correo electronico', 'correo electrónico', 'email address', 'buyer email', 'mail'],
+    telefono: ['phone', 'phone number', 'tel', 'telefono', 'teléfono', 'mobile', 'celular'],
+    nombre: ['nombre', 'first name', 'client first name', 'given name', 'primer nombre'],
+    apellido: ['apellido', 'last name', 'client last name', 'family name', 'surname'],
+    documento_identidad: ['document', 'document id', 'documento', 'documento id', 'dni', 'cedula', 'cédula', 'id number', 'identification'],
+    fecha_nacimiento: ['birth', 'birth date', 'fecha nacimiento', 'fecha de nacimiento', 'dob', 'birthdate'],
+    genero: ['gender', 'sexo', 'género', 'sex'],
+    direccion: ['direccion', 'dirección', 'address', 'billing address', 'street', 'domicilio'],
+    seccion: ['seccion', 'sección', 'section', 'sector', 'area'],
+    tiketera: ['referrer', 'tiketera', 'ticketera', 'origen', 'source', 'plataforma'],
+    tipo_ticket_nombre: ['ticket type', 'tipo ticket', 'tipo de ticket', 'ticket', 'entrada', 'boleto', 'pass'],
+    fecha_compra: ['purchase date', 'order date', 'fecha compra', 'fecha de compra', 'date', 'purchase', 'compra']
   }
   
-  for (const [field, keywords] of Object.entries(patterns)) {
-    const matches = headers.filter(h => {
-      const headerLower = h.toLowerCase().trim()
-      return keywords.some(k => headerLower.includes(k))
-    })
-    
-    if (matches.length > 0) {
-      mapping[field] = matches
+  const pick = (keys: string[]) => {
+    const found: string[] = []
+    for (const key of keys) {
+      const idx = H.findIndex(h => h.includes(key))
+      if (idx >= 0 && !found.includes(headers[idx])) {
+        found.push(headers[idx])
+      }
+    }
+    return found.length ? found : null
+  }
+  
+  for (const [field, keys] of Object.entries(patterns)) {
+    const result = pick(keys)
+    if (result) {
+      mapping[field] = result
+    }
+  }
+  
+  // Si no encontró email, intenta descubrirlo por patrón
+  if (!mapping.email) {
+    const emailCandidates = headers.filter(h => /mail|correo/i.test(h))
+    if (emailCandidates.length) {
+      mapping.email = emailCandidates
     }
   }
   
