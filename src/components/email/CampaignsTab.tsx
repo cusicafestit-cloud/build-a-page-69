@@ -61,35 +61,62 @@ export const CampaignsTab = () => {
   const { data: attendees = [], isLoading: isLoadingAttendees } = useQuery({
     queryKey: ["attendees-for-campaign", filterEvent],
     queryFn: async () => {
-      let query = supabase
+      // Obtener todos los asistentes
+      const { data: asistentesData, error: asistentesError } = await supabase
         .from("asistentes")
-        .select(`
-          id,
-          nombre,
-          apellido,
-          email,
-          evento_id,
-          codigo_ticket,
-          eventos:evento_id(nombre)
-        `)
+        .select("id, nombre, apellido, email")
         .not("email", "is", null)
         .order("nombre");
       
+      if (asistentesError) throw asistentesError;
+      if (!asistentesData) return [];
+
+      // Si hay filtro por evento
       if (filterEvent !== "all") {
-        query = query.eq("evento_id", filterEvent);
+        const { data: asistenciasData, error: asistenciasError } = await supabase
+          .from("asistencias")
+          .select(`
+            asistente_id,
+            codigo_ticket,
+            eventos(nombre)
+          `)
+          .eq("evento_id", filterEvent);
+
+        if (asistenciasError) throw asistenciasError;
+        if (!asistenciasData) return [];
+
+        // Crear mapa de asistencias por asistente_id
+        const asistenciasMap = new Map<string, any>();
+        asistenciasData.forEach((asist: any) => {
+          asistenciasMap.set(asist.asistente_id, asist);
+        });
+
+        // Filtrar y mapear asistentes que tienen asistencia a este evento
+        return asistentesData
+          .filter((ast: any) => asistenciasMap.has(ast.id))
+          .map((ast: any) => {
+            const asistencia = asistenciasMap.get(ast.id);
+            return {
+              id: ast.id,
+              nombre: ast.nombre,
+              apellido: ast.apellido,
+              email: ast.email,
+              evento_id: filterEvent,
+              evento_nombre: asistencia?.eventos?.nombre || '',
+              codigo_ticket: asistencia?.codigo_ticket || '',
+            };
+          });
       }
       
-      const { data, error } = await query;
-      if (error) throw error;
-      
-      return (data || []).map((a: any) => ({
+      // Sin filtro, retornar todos los asistentes
+      return asistentesData.map((a: any) => ({
         id: a.id,
         nombre: a.nombre,
         apellido: a.apellido,
         email: a.email,
-        evento_id: a.evento_id,
-        evento_nombre: a.eventos?.nombre,
-        codigo_ticket: a.codigo_ticket,
+        evento_id: undefined,
+        evento_nombre: undefined,
+        codigo_ticket: undefined,
       }));
     },
   });

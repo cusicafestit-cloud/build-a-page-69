@@ -14,10 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      asistencias: {
+        Row: {
+          asistente_id: string
+          codigo_ticket: string | null
+          created_at: string | null
+          estado: string | null
+          evento_id: string
+          fecha_compra: string | null
+          id: string
+          metadata: Json | null
+          tipo_ticket_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          asistente_id: string
+          codigo_ticket?: string | null
+          created_at?: string | null
+          estado?: string | null
+          evento_id: string
+          fecha_compra?: string | null
+          id?: string
+          metadata?: Json | null
+          tipo_ticket_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          asistente_id?: string
+          codigo_ticket?: string | null
+          created_at?: string | null
+          estado?: string | null
+          evento_id?: string
+          fecha_compra?: string | null
+          id?: string
+          metadata?: Json | null
+          tipo_ticket_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       asistentes: {
         Row: {
           apellido: string | null
-          codigo_ticket: string | null
           comentarios: string | null
           como_se_entero: string | null
           created_at: string | null
@@ -25,7 +63,6 @@ export type Database = {
           documento_identidad: string | null
           email: string
           estado: string | null
-          evento_id: string
           evento_nombre: string | null
           fecha_compra: string | null
           fecha_nacimiento: string | null
@@ -37,13 +74,11 @@ export type Database = {
           seccion: string | null
           telefono: string | null
           tiketera: string | null
-          tipo_ticket_id: string
           tipo_ticket_nombre: string | null
           updated_at: string | null
         }
         Insert: {
           apellido?: string | null
-          codigo_ticket?: string | null
           comentarios?: string | null
           como_se_entero?: string | null
           created_at?: string | null
@@ -51,7 +86,6 @@ export type Database = {
           documento_identidad?: string | null
           email: string
           estado?: string | null
-          evento_id: string
           evento_nombre?: string | null
           fecha_compra?: string | null
           fecha_nacimiento?: string | null
@@ -63,13 +97,11 @@ export type Database = {
           seccion?: string | null
           telefono?: string | null
           tiketera?: string | null
-          tipo_ticket_id: string
           tipo_ticket_nombre?: string | null
           updated_at?: string | null
         }
         Update: {
           apellido?: string | null
-          codigo_ticket?: string | null
           comentarios?: string | null
           como_se_entero?: string | null
           created_at?: string | null
@@ -77,7 +109,6 @@ export type Database = {
           documento_identidad?: string | null
           email?: string
           estado?: string | null
-          evento_id?: string
           evento_nombre?: string | null
           fecha_compra?: string | null
           fecha_nacimiento?: string | null
@@ -89,26 +120,10 @@ export type Database = {
           seccion?: string | null
           telefono?: string | null
           tiketera?: string | null
-          tipo_ticket_id?: string
           tipo_ticket_nombre?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "asistentes_evento_id_fkey"
-            columns: ["evento_id"]
-            isOneToOne: false
-            referencedRelation: "eventos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "asistentes_tipo_ticket_id_fkey"
-            columns: ["tipo_ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tipos_tickets"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       campanas_email: {
         Row: {

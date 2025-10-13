@@ -7,36 +7,49 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Download, Upload, Filter, Users, Plus, User, Eye, Edit } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, Download, Upload, Users, Plus, Eye, Edit, X } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   StatsSkeleton, 
-  TableSkeleton, 
-  FormSkeleton, 
-  SelectSkeleton 
+  TableSkeleton
 } from "@/components/ui/skeleton-components";
+
+type Asistencia = {
+  id: string;
+  evento: string;
+  tipoTicket: string;
+  codigoTicket: string;
+  estado: string;
+  eventoId: string;
+  tipoTicketId: string;
+};
 
 type Attendee = {
   id: string;
-  name: string;
+  nombre: string;
   apellido: string;
   email: string;
-  phone: string;
-  event: string;
-  eventId: string;
-  ticketType: string;
-  status: "confirmed" | "pending" | "cancelled";
-  registrationDate: string;
+  telefono: string;
+  documentoIdentidad?: string;
+  fechaNacimiento?: string;
+  asistencias: Asistencia[];
 };
 
+type EventoConTickets = {
+  eventoId: string;
+  eventoNombre: string;
+  tipoTicketId: string;
+  tipoTicketNombre: string;
+  precio: number;
+};
 
 const Attendees = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterEventId, setFilterEventId] = useState<string>("all");
   const [isNewAttendeeOpen, setIsNewAttendeeOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -50,8 +63,7 @@ const Attendees = () => {
     telefono: "",
     documentoIdentidad: "",
     fechaNacimiento: "",
-    eventoId: "",
-    tipoTicketId: ""
+    eventosSeleccionados: [] as EventoConTickets[]
   });
 
   const [editAttendee, setEditAttendee] = useState({
@@ -59,14 +71,13 @@ const Attendees = () => {
     apellido: "",
     email: "",
     telefono: "",
-    estado: "",
-    eventoId: "",
-    tipoTicketId: ""
+    documentoIdentidad: "",
+    fechaNacimiento: "",
+    asistenciasActuales: [] as Asistencia[],
+    nuevasAsistencias: [] as EventoConTickets[]
   });
 
-
-  // Queries para datos de Supabase
-
+  // Queries
   const { data: events = [] } = useQuery({
     queryKey: ["events"],
     queryFn: async () => {
@@ -80,40 +91,33 @@ const Attendees = () => {
     },
   });
 
-  const { data: ticketTypes = [] } = useQuery({
-    queryKey: ["ticket-types-for-attendee", newAttendee.eventoId],
+  const { data: allTicketTypes = [] } = useQuery({
+    queryKey: ["all-ticket-types"],
     queryFn: async () => {
-      if (!newAttendee.eventoId) return [];
       const { data, error } = await supabase
         .from('tipos_tickets')
-        .select('id, tipo, precio')
-        .eq('evento_id', newAttendee.eventoId)
+        .select(`
+          id,
+          tipo,
+          precio,
+          evento_id,
+          eventos(nombre)
+        `)
         .order('tipo');
       
       if (error) throw error;
-      return data;
+      return data.map((tt: any) => ({
+        id: tt.id,
+        tipo: tt.tipo,
+        precio: tt.precio,
+        eventoId: tt.evento_id,
+        eventoNombre: tt.eventos?.nombre || 'Sin evento'
+      }));
     },
-    enabled: !!newAttendee.eventoId,
   });
 
-  const { data: ticketTypesForEdit = [] } = useQuery({
-    queryKey: ["ticket-types-for-edit", editAttendee.eventoId],
-    queryFn: async () => {
-      if (!editAttendee.eventoId) return [];
-      const { data, error } = await supabase
-        .from('tipos_tickets')
-        .select('id, tipo, precio')
-        .eq('evento_id', editAttendee.eventoId)
-        .order('tipo');
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!editAttendee.eventoId,
-  });
-
-  const { data: attendees = [], isLoading } = useQuery({
-    queryKey: ["attendees"],
+  const { data: attendees = [], isLoading, refetch } = useQuery({
+    queryKey: ["attendees-with-asistencias"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('asistentes')
@@ -123,90 +127,156 @@ const Attendees = () => {
           apellido,
           email,
           telefono,
-          estado,
-          created_at,
-          evento_id,
-          eventos(nombre),
-          tipos_tickets(tipo)
+          documento_identidad,
+          fecha_nacimiento
         `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      
-      // Transform data to match Attendee type
-      return data.map(attendee => ({
-        id: attendee.id,
-        name: attendee.nombre || '',
-        apellido: attendee.apellido || '',
-        email: attendee.email || '',
-        phone: attendee.telefono || '',
-        event: attendee.eventos?.nombre || 'Sin evento',
-        eventId: attendee.evento_id || '',
-        ticketType: attendee.tipos_tickets?.tipo || 'Sin tipo',
-        status: attendee.estado as "confirmed" | "pending" | "cancelled",
-        registrationDate: new Date(attendee.created_at).toISOString().split('T')[0]
-      }));
+
+      // Obtener asistencias para cada asistente
+      const attendeesWithAsistencias = await Promise.all(
+        data.map(async (asistente) => {
+          const { data: asistencias, error: asistenciasError } = await supabase
+            .from('asistencias')
+            .select(`
+              id,
+              codigo_ticket,
+              estado,
+              evento_id,
+              tipo_ticket_id,
+              eventos(nombre),
+              tipos_tickets(tipo)
+            `)
+            .eq('asistente_id', asistente.id);
+
+          if (asistenciasError) throw asistenciasError;
+
+          return {
+            id: asistente.id,
+            nombre: asistente.nombre,
+            apellido: asistente.apellido,
+            email: asistente.email,
+            telefono: asistente.telefono,
+            documentoIdentidad: asistente.documento_identidad,
+            fechaNacimiento: asistente.fecha_nacimiento,
+            asistencias: (asistencias || []).map((a: any) => ({
+              id: a.id,
+              evento: a.eventos?.nombre || 'Sin evento',
+              tipoTicket: a.tipos_tickets?.tipo || 'Sin tipo',
+              codigoTicket: a.codigo_ticket || '',
+              estado: a.estado || 'confirmado',
+              eventoId: a.evento_id,
+              tipoTicketId: a.tipo_ticket_id
+            }))
+          };
+        })
+      );
+
+      return attendeesWithAsistencias as Attendee[];
     },
   });
 
   const filteredAttendees = attendees.filter(attendee => {
-    const matchesSearch = (attendee.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (attendee.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (attendee.event?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+    const matchesSearch = attendee.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         attendee.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesFilter = filterStatus === "all" || attendee.status === filterStatus;
-    const matchesEvent = filterEventId === "all" || attendee.eventId === filterEventId;
+    const matchesEvent = filterEventId === "all" || 
+                        attendee.asistencias.some(a => a.eventoId === filterEventId);
     
-    return matchesSearch && matchesFilter && matchesEvent;
+    return matchesSearch && matchesEvent;
   });
 
-  // Agrupar asistentes por email para ver cuántos eventos ha asistido cada persona
-  const attendeesByEmail = attendees.reduce((acc, attendee) => {
-    if (!acc[attendee.email]) {
-      acc[attendee.email] = [];
+  const handleToggleEvento = (ticketType: any) => {
+    const exists = newAttendee.eventosSeleccionados.find(
+      e => e.eventoId === ticketType.eventoId && e.tipoTicketId === ticketType.id
+    );
+
+    if (exists) {
+      setNewAttendee({
+        ...newAttendee,
+        eventosSeleccionados: newAttendee.eventosSeleccionados.filter(
+          e => !(e.eventoId === ticketType.eventoId && e.tipoTicketId === ticketType.id)
+        )
+      });
+    } else {
+      setNewAttendee({
+        ...newAttendee,
+        eventosSeleccionados: [...newAttendee.eventosSeleccionados, {
+          eventoId: ticketType.eventoId,
+          eventoNombre: ticketType.eventoNombre,
+          tipoTicketId: ticketType.id,
+          tipoTicketNombre: ticketType.tipo,
+          precio: ticketType.precio
+        }]
+      });
     }
-    acc[attendee.email].push(attendee);
-    return acc;
-  }, {} as Record<string, Attendee[]>);
+  };
 
   const handleCreateAttendee = async () => {
-    // Validación de campos obligatorios
     if (!newAttendee.nombre || !newAttendee.apellido || !newAttendee.email || 
-        !newAttendee.telefono || !newAttendee.eventoId || !newAttendee.tipoTicketId) {
+        !newAttendee.telefono || newAttendee.eventosSeleccionados.length === 0) {
       toast({
         title: "Error de validación",
-        description: "Todos los campos marcados con * son obligatorios, incluyendo el evento y tipo de ticket.",
+        description: "Debes completar todos los campos obligatorios y seleccionar al menos un evento.",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      // Generar código único de ticket
-      const ticketCode = `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-      
-      const { data, error } = await supabase
-        .from("asistentes")
-        .insert({
-          nombre: newAttendee.nombre.trim(),
-          apellido: newAttendee.apellido.trim(),
-          email: newAttendee.email.trim().toLowerCase(),
-          telefono: newAttendee.telefono.trim(),
-          evento_id: newAttendee.eventoId,
-          tipo_ticket_id: newAttendee.tipoTicketId,
-          codigo_ticket: ticketCode,
-          documento_identidad: newAttendee.documentoIdentidad.trim() || null,
-          fecha_nacimiento: newAttendee.fechaNacimiento || null,
-          estado: "confirmado"
-        })
-        .select()
-        .single();
+      // Verificar si el email ya existe
+      const { data: existingAttendee } = await supabase
+        .from('asistentes')
+        .select('id')
+        .eq('email', newAttendee.email.trim().toLowerCase())
+        .maybeSingle();
 
-      if (error) throw error;
+      let attendeeId: string;
+
+      if (existingAttendee) {
+        toast({
+          title: "Email existente",
+          description: "Ya existe un asistente con ese email. Se agregarán los nuevos eventos a su registro.",
+        });
+        attendeeId = existingAttendee.id;
+      } else {
+        // Crear nuevo asistente
+        const { data, error } = await supabase
+          .from("asistentes")
+          .insert({
+            nombre: newAttendee.nombre.trim(),
+            apellido: newAttendee.apellido.trim(),
+            email: newAttendee.email.trim().toLowerCase(),
+            telefono: newAttendee.telefono.trim(),
+            documento_identidad: newAttendee.documentoIdentidad.trim() || null,
+            fecha_nacimiento: newAttendee.fechaNacimiento || null
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        attendeeId = data.id;
+      }
+
+      // Crear asistencias
+      const asistenciasToCreate = newAttendee.eventosSeleccionados.map(evento => ({
+        asistente_id: attendeeId,
+        evento_id: evento.eventoId,
+        tipo_ticket_id: evento.tipoTicketId,
+        codigo_ticket: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+        estado: 'confirmado'
+      }));
+
+      const { error: asistenciasError } = await supabase
+        .from('asistencias')
+        .insert(asistenciasToCreate);
+
+      if (asistenciasError) throw asistenciasError;
 
       toast({
         title: "Asistente registrado",
-        description: `${newAttendee.nombre} ha sido registrado exitosamente para el evento.`,
+        description: `${newAttendee.nombre} ha sido registrado con ${newAttendee.eventosSeleccionados.length} evento(s).`,
       });
 
       setIsNewAttendeeOpen(false);
@@ -217,14 +287,14 @@ const Attendees = () => {
         telefono: "",
         documentoIdentidad: "",
         fechaNacimiento: "",
-        eventoId: "",
-        tipoTicketId: ""
+        eventosSeleccionados: []
       });
+      refetch();
     } catch (error: any) {
       console.error("Error creating attendee:", error);
       toast({
         title: "Error",
-        description: error.message || "No se pudo registrar el asistente. Inténtalo de nuevo.",
+        description: error.message || "No se pudo registrar el asistente.",
         variant: "destructive",
       });
     }
@@ -238,46 +308,110 @@ const Attendees = () => {
   const handleEditAttendee = (attendee: Attendee) => {
     setSelectedAttendee(attendee);
     setEditAttendee({
-      nombre: attendee.name,
+      nombre: attendee.nombre,
       apellido: attendee.apellido,
       email: attendee.email,
-      telefono: attendee.phone,
-      estado: attendee.status,
-      eventoId: attendee.eventId,
-      tipoTicketId: "" // Se cargará cuando se seleccione el evento
+      telefono: attendee.telefono,
+      documentoIdentidad: attendee.documentoIdentidad || "",
+      fechaNacimiento: attendee.fechaNacimiento || "",
+      asistenciasActuales: attendee.asistencias,
+      nuevasAsistencias: []
     });
     setIsEditDialogOpen(true);
+  };
+
+  const handleToggleNuevaAsistencia = (ticketType: any) => {
+    const exists = editAttendee.nuevasAsistencias.find(
+      e => e.eventoId === ticketType.eventoId && e.tipoTicketId === ticketType.id
+    );
+
+    if (exists) {
+      setEditAttendee({
+        ...editAttendee,
+        nuevasAsistencias: editAttendee.nuevasAsistencias.filter(
+          e => !(e.eventoId === ticketType.eventoId && e.tipoTicketId === ticketType.id)
+        )
+      });
+    } else {
+      setEditAttendee({
+        ...editAttendee,
+        nuevasAsistencias: [...editAttendee.nuevasAsistencias, {
+          eventoId: ticketType.eventoId,
+          eventoNombre: ticketType.eventoNombre,
+          tipoTicketId: ticketType.id,
+          tipoTicketNombre: ticketType.tipo,
+          precio: ticketType.precio
+        }]
+      });
+    }
+  };
+
+  const handleRemoveAsistencia = async (asistenciaId: string) => {
+    try {
+      const { error } = await supabase
+        .from('asistencias')
+        .delete()
+        .eq('id', asistenciaId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Asistencia eliminada",
+        description: "La asistencia al evento ha sido eliminada.",
+      });
+
+      // Actualizar el estado local
+      if (selectedAttendee) {
+        setEditAttendee({
+          ...editAttendee,
+          asistenciasActuales: editAttendee.asistenciasActuales.filter(a => a.id !== asistenciaId)
+        });
+      }
+      
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar la asistencia.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleUpdateAttendee = async () => {
     if (!selectedAttendee) return;
 
-    // Validación de campos obligatorios
-    if (!editAttendee.nombre || !editAttendee.apellido || !editAttendee.email || 
-        !editAttendee.telefono || !editAttendee.eventoId || !editAttendee.tipoTicketId) {
-      toast({
-        title: "Error de validación",
-        description: "Todos los campos marcados con * son obligatorios.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      const { error } = await supabase
+      // Actualizar información básica del asistente
+      const { error: updateError } = await supabase
         .from("asistentes")
         .update({
           nombre: editAttendee.nombre.trim(),
           apellido: editAttendee.apellido.trim(),
-          email: editAttendee.email.trim().toLowerCase(),
           telefono: editAttendee.telefono.trim(),
-          estado: editAttendee.estado,
-          evento_id: editAttendee.eventoId,
-          tipo_ticket_id: editAttendee.tipoTicketId
+          documento_identidad: editAttendee.documentoIdentidad.trim() || null,
+          fecha_nacimiento: editAttendee.fechaNacimiento || null
         })
         .eq('id', selectedAttendee.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Agregar nuevas asistencias si hay
+      if (editAttendee.nuevasAsistencias.length > 0) {
+        const nuevasAsistencias = editAttendee.nuevasAsistencias.map(evento => ({
+          asistente_id: selectedAttendee.id,
+          evento_id: evento.eventoId,
+          tipo_ticket_id: evento.tipoTicketId,
+          codigo_ticket: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+          estado: 'confirmado'
+        }));
+
+        const { error: asistenciasError } = await supabase
+          .from('asistencias')
+          .insert(nuevasAsistencias);
+
+        if (asistenciasError) throw asistenciasError;
+      }
 
       toast({
         title: "Asistente actualizado",
@@ -285,13 +419,12 @@ const Attendees = () => {
       });
 
       setIsEditDialogOpen(false);
-      // Refrescar la lista
-      window.location.reload();
+      refetch();
     } catch (error: any) {
       console.error("Error updating attendee:", error);
       toast({
         title: "Error",
-        description: error.message || "No se pudo actualizar el asistente. Inténtalo de nuevo.",
+        description: error.message || "No se pudo actualizar el asistente.",
         variant: "destructive",
       });
     }
@@ -299,10 +432,12 @@ const Attendees = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "confirmado":
       case "confirmed":
         return <Badge className="bg-green-500 text-white hover:bg-green-600">Confirmado</Badge>;
       case "pending":
         return <Badge variant="secondary">Pendiente</Badge>;
+      case "cancelado":
       case "cancelled":
         return <Badge variant="destructive">Cancelado</Badge>;
       default:
@@ -312,9 +447,7 @@ const Attendees = () => {
 
   const stats = [
     { title: "Total Asistentes", value: attendees.length.toString(), icon: Users },
-    { title: "Confirmados", value: attendees.filter(a => a.status === "confirmed").length.toString(), icon: Users },
-    { title: "Pendientes", value: attendees.filter(a => a.status === "pending").length.toString(), icon: Users },
-    { title: "Cancelados", value: attendees.filter(a => a.status === "cancelled").length.toString(), icon: Users },
+    { title: "Total Asistencias", value: attendees.reduce((acc, a) => acc + a.asistencias.length, 0).toString(), icon: Users },
   ];
 
   return (
@@ -336,18 +469,14 @@ const Attendees = () => {
                 Registrar Asistente
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Registrar Nuevo Asistente
-                </DialogTitle>
+                <DialogTitle>Registrar Nuevo Asistente</DialogTitle>
                 <DialogDescription>
-                  Completa la información del asistente para registrarlo en el evento.
+                  Completa la información del asistente y selecciona los eventos a los que asistirá.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                {/* Información Personal */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="nombre">Nombre *</Label>
@@ -412,63 +541,48 @@ const Attendees = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
-                  <Input
-                    id="fechaNacimiento"
-                    type="date"
-                    value={newAttendee.fechaNacimiento}
-                    onChange={(e) => setNewAttendee({ ...newAttendee, fechaNacimiento: e.target.value })}
-                  />
-                </div>
-
-                {/* Información del Evento */}
-                <div className="space-y-2">
-                  <Label htmlFor="evento">Evento *</Label>
-                  <Select 
-                    value={newAttendee.eventoId} 
-                    onValueChange={(value) => setNewAttendee({ ...newAttendee, eventoId: value, tipoTicketId: "" })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un evento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {events.map((event) => (
-                        <SelectItem key={event.id} value={event.id}>
-                          {event.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {newAttendee.eventoId && (
-                  <div className="space-y-2">
-                    <Label htmlFor="tipoTicket">Tipo de Ticket *</Label>
-                    <Select 
-                      value={newAttendee.tipoTicketId} 
-                      onValueChange={(value) => setNewAttendee({ ...newAttendee, tipoTicketId: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un tipo de ticket" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ticketTypes.map((ticket) => (
-                          <SelectItem key={ticket.id} value={ticket.id}>
-                            {ticket.tipo} - ${ticket.precio}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-3">
+                  <Label>Eventos y Entradas * (selecciona al menos uno)</Label>
+                  <div className="border rounded-lg p-4 space-y-2 max-h-60 overflow-y-auto">
+                    {allTicketTypes.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-4">
+                        No hay tipos de tickets disponibles
+                      </p>
+                    ) : (
+                      allTicketTypes.map((ticketType: any) => {
+                        const isSelected = newAttendee.eventosSeleccionados.some(
+                          e => e.eventoId === ticketType.eventoId && e.tipoTicketId === ticketType.id
+                        );
+                        return (
+                          <div
+                            key={ticketType.id}
+                            className="flex items-center space-x-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleToggleEvento(ticketType)}
+                          >
+                            <Checkbox checked={isSelected} />
+                            <div className="flex-1">
+                              <p className="font-medium">{ticketType.eventoNombre}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {ticketType.tipo} - ${ticketType.precio}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
-                )}
-
+                  {newAttendee.eventosSeleccionados.length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      {newAttendee.eventosSeleccionados.length} evento(s) seleccionado(s)
+                    </div>
+                  )}
+                </div>
               </div>
               <DialogFooter>
                 <Button 
                   onClick={handleCreateAttendee}
                   disabled={!newAttendee.nombre || !newAttendee.apellido || !newAttendee.email || 
-                           !newAttendee.telefono || !newAttendee.eventoId || !newAttendee.tipoTicketId}
+                           !newAttendee.telefono || newAttendee.eventosSeleccionados.length === 0}
                 >
                   Registrar Asistente
                 </Button>
@@ -481,7 +595,7 @@ const Attendees = () => {
         {isLoading ? (
           <StatsSkeleton />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {stats.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -517,17 +631,6 @@ const Attendees = () => {
                     className="pl-10"
                   />
                 </div>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-3 py-2 border border-input bg-background rounded-md text-sm min-w-[160px]"
-                  title="Filtrar asistentes por estado"
-                >
-                  <option value="all">Todos los estados</option>
-                  <option value="confirmed">Confirmados</option>
-                  <option value="pending">Pendientes</option>
-                  <option value="cancelled">Cancelados</option>
-                </select>
                 <select
                   value={filterEventId}
                   onChange={(e) => setFilterEventId(e.target.value)}
@@ -571,25 +674,23 @@ const Attendees = () => {
                     <TableHead>Nombre</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Teléfono</TableHead>
-                    <TableHead>Evento</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Fecha de Registro</TableHead>
+                    <TableHead>Eventos</TableHead>
                     <TableHead>Acción</TableHead>
                   </TableRow>
                 </TableHeader>
                 {isLoading ? (
                   <TableSkeleton 
-                    columns={7} 
+                    columns={5} 
                     rows={5}
-                    headers={["Nombre", "Email", "Teléfono", "Evento", "Estado", "Fecha de Registro", "Acción"]}
+                    headers={["Nombre", "Email", "Teléfono", "Eventos", "Acción"]}
                   />
                 ) : (
                   <TableBody>
                     {filteredAttendees.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={5} className="text-center py-8">
                           <div className="text-muted-foreground">
-                            {searchTerm || filterStatus !== "all" 
+                            {searchTerm || filterEventId !== "all" 
                               ? "No se encontraron asistentes con los filtros aplicados"
                               : "No hay asistentes registrados"
                             }
@@ -597,53 +698,42 @@ const Attendees = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredAttendees.map((attendee) => {
-                        const userEvents = attendeesByEmail[attendee.email] || [];
-                        const eventCount = userEvents.length;
-                        return (
+                      filteredAttendees.map((attendee) => (
                         <TableRow key={attendee.id}>
                           <TableCell className="font-medium">
-                            <div className="flex flex-col">
-                              <span>{attendee.name} {attendee.apellido}</span>
-                              {eventCount > 1 && (
-                                <span className="text-xs text-muted-foreground">
-                                  Ha asistido a {eventCount} eventos
-                                </span>
-                              )}
-                            </div>
+                            {attendee.nombre} {attendee.apellido}
                           </TableCell>
                           <TableCell>{attendee.email}</TableCell>
-                          <TableCell>{attendee.phone}</TableCell>
-                          <TableCell>{attendee.event}</TableCell>
-                          <TableCell>{getStatusBadge(attendee.status)}</TableCell>
+                          <TableCell>{attendee.telefono}</TableCell>
                           <TableCell>
-                            {new Date(attendee.registrationDate).toLocaleDateString()}
+                            <div className="flex flex-wrap gap-1">
+                              {attendee.asistencias.map((asistencia, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  {asistencia.evento}
+                                </Badge>
+                              ))}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0"
-                                title="Ver información"
                                 onClick={() => handleViewAttendee(attendee)}
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0"
-                                title="Editar asistente"
                                 onClick={() => handleEditAttendee(attendee)}
                               >
-                                <Edit className="h-4 w-4" />
+                                <Edit className="w-4 h-4" />
                               </Button>
                             </div>
                           </TableCell>
                         </TableRow>
-                      );
-                      })
+                      ))
                     )}
                   </TableBody>
                 )}
@@ -654,58 +744,52 @@ const Attendees = () => {
 
         {/* View Attendee Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Eye className="w-5 h-5" />
-                Información del Asistente
-              </DialogTitle>
+              <DialogTitle>Información del Asistente</DialogTitle>
             </DialogHeader>
             {selectedAttendee && (
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground">Nombre</Label>
-                    <p className="font-medium">{selectedAttendee.name}</p>
+                    <Label className="text-muted-foreground">Nombre Completo</Label>
+                    <p className="font-medium">{selectedAttendee.nombre} {selectedAttendee.apellido}</p>
                   </div>
-                  <div>
-                    <Label className="text-muted-foreground">Apellido</Label>
-                    <p className="font-medium">{selectedAttendee.apellido}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-muted-foreground">Email</Label>
                     <p className="font-medium">{selectedAttendee.email}</p>
                   </div>
-                  <div>
-                    <Label className="text-muted-foreground">Teléfono</Label>
-                    <p className="font-medium">{selectedAttendee.phone}</p>
-                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground">Estado</Label>
-                    <div className="mt-1">{getStatusBadge(selectedAttendee.status)}</div>
+                    <Label className="text-muted-foreground">Teléfono</Label>
+                    <p className="font-medium">{selectedAttendee.telefono}</p>
                   </div>
-                  <div>
-                    <Label className="text-muted-foreground">Tipo de Ticket</Label>
-                    <p className="font-medium">{selectedAttendee.ticketType}</p>
-                  </div>
+                  {selectedAttendee.documentoIdentidad && (
+                    <div>
+                      <Label className="text-muted-foreground">Documento</Label>
+                      <p className="font-medium">{selectedAttendee.documentoIdentidad}</p>
+                    </div>
+                  )}
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Evento</Label>
-                  <p className="font-medium">{selectedAttendee.event}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Fecha de Registro</Label>
-                  <p className="font-medium">
-                    {new Date(selectedAttendee.registrationDate).toLocaleDateString('es-ES', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
+                  <Label className="text-muted-foreground mb-2">Eventos Asistidos ({selectedAttendee.asistencias.length})</Label>
+                  <div className="space-y-2 mt-2">
+                    {selectedAttendee.asistencias.map((asistencia) => (
+                      <div key={asistencia.id} className="border rounded-lg p-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium">{asistencia.evento}</p>
+                            <p className="text-sm text-muted-foreground">{asistencia.tipoTicket}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Código: {asistencia.codigoTicket}
+                            </p>
+                          </div>
+                          {getStatusBadge(asistencia.estado)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -714,14 +798,11 @@ const Attendees = () => {
 
         {/* Edit Attendee Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Edit className="w-5 h-5" />
-                Editar Asistente
-              </DialogTitle>
+              <DialogTitle>Editar Asistente</DialogTitle>
               <DialogDescription>
-                Actualiza la información del asistente.
+                Actualiza la información del asistente y gestiona sus asistencias a eventos.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -750,8 +831,10 @@ const Attendees = () => {
                     id="edit-email"
                     type="email"
                     value={editAttendee.email}
-                    onChange={(e) => setEditAttendee({ ...editAttendee, email: e.target.value })}
+                    disabled
+                    className="bg-muted"
                   />
+                  <p className="text-xs text-muted-foreground">El email no se puede modificar</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-telefono">Teléfono *</Label>
@@ -762,70 +845,73 @@ const Attendees = () => {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-estado">Estado</Label>
-                <Select
-                  value={editAttendee.estado}
-                  onValueChange={(value) => setEditAttendee({ ...editAttendee, estado: value })}
-                >
-                  <SelectTrigger id="edit-estado">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="confirmed">Confirmado</SelectItem>
-                    <SelectItem value="pending">Pendiente</SelectItem>
-                    <SelectItem value="cancelled">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
-              {/* Selección de Evento */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-evento">Evento *</Label>
-                <Select 
-                  value={editAttendee.eventoId} 
-                  onValueChange={(value) => setEditAttendee({ ...editAttendee, eventoId: value, tipoTicketId: "" })}
-                >
-                  <SelectTrigger id="edit-evento">
-                    <SelectValue placeholder="Selecciona un evento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {events.map((event) => (
-                      <SelectItem key={event.id} value={event.id}>
-                        {event.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Selección de Tipo de Ticket */}
-              {editAttendee.eventoId && (
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tipoTicket">Tipo de Ticket *</Label>
-                  <Select 
-                    value={editAttendee.tipoTicketId} 
-                    onValueChange={(value) => setEditAttendee({ ...editAttendee, tipoTicketId: value })}
-                  >
-                    <SelectTrigger id="edit-tipoTicket">
-                      <SelectValue placeholder="Selecciona un tipo de ticket" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ticketTypesForEdit.map((ticket) => (
-                        <SelectItem key={ticket.id} value={ticket.id}>
-                          {ticket.tipo} - ${ticket.precio}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div>
+                <Label className="mb-2">Asistencias Actuales</Label>
+                <div className="space-y-2 mt-2">
+                  {editAttendee.asistenciasActuales.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No hay asistencias registradas</p>
+                  ) : (
+                    editAttendee.asistenciasActuales.map((asistencia) => (
+                      <div key={asistencia.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium">{asistencia.evento}</p>
+                          <p className="text-sm text-muted-foreground">{asistencia.tipoTicket}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveAsistencia(asistencia.id)}
+                        >
+                          <X className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
                 </div>
-              )}
+              </div>
+
+              <div className="space-y-3">
+                <Label>Agregar Nuevos Eventos</Label>
+                <div className="border rounded-lg p-4 space-y-2 max-h-60 overflow-y-auto">
+                  {allTicketTypes.map((ticketType: any) => {
+                    const yaExiste = editAttendee.asistenciasActuales.some(
+                      a => a.eventoId === ticketType.eventoId && a.tipoTicketId === ticketType.id
+                    );
+                    const isSelected = editAttendee.nuevasAsistencias.some(
+                      e => e.eventoId === ticketType.eventoId && e.tipoTicketId === ticketType.id
+                    );
+                    
+                    if (yaExiste) return null;
+
+                    return (
+                      <div
+                        key={ticketType.id}
+                        className="flex items-center space-x-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleToggleNuevaAsistencia(ticketType)}
+                      >
+                        <Checkbox checked={isSelected} />
+                        <div className="flex-1">
+                          <p className="font-medium">{ticketType.eventoNombre}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {ticketType.tipo} - ${ticketType.precio}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {editAttendee.nuevasAsistencias.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    {editAttendee.nuevasAsistencias.length} nuevo(s) evento(s) seleccionado(s)
+                  </div>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button 
                 onClick={handleUpdateAttendee}
-                disabled={!editAttendee.nombre || !editAttendee.apellido || !editAttendee.email || 
-                         !editAttendee.telefono || !editAttendee.eventoId || !editAttendee.tipoTicketId}
+                disabled={!editAttendee.nombre || !editAttendee.apellido || !editAttendee.telefono}
               >
                 Actualizar Asistente
               </Button>
