@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/Layout";
-import { Calendar, Users, TrendingUp, DollarSign } from "lucide-react";
+import { Calendar, Users, TrendingUp, DollarSign, Ticket } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const stats = [
   { title: "Eventos Activos", value: "12", icon: Calendar, change: "+2 este mes", trend: "up" },
@@ -21,12 +23,22 @@ const Dashboard = () => {
     <Layout>
       <div className="p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Resumen general de tu gestión de eventos
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Dashboard
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Resumen general de tu gestión de eventos
+              </p>
+            </div>
+            <Link to="/canje">
+              <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
+                <Ticket className="w-4 h-4 mr-2" />
+                Canjes Públicos
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Grid */}
