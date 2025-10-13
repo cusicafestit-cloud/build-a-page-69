@@ -100,7 +100,7 @@ export const BulkEmailDialog = ({ isOpen, onClose, selectedAttendees }: BulkEmai
           contenido_html: formData.contenido,
           tipo: "promocional",
           estado: "enviada",
-          audiencia: "personalizado",
+          audiencia: "todos",
           filtros_audiencia: {
             asistentes_ids: selectedAttendees.map(a => a.id)
           },
