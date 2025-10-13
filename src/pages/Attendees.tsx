@@ -50,7 +50,6 @@ const Attendees = () => {
     telefono: "",
     documentoIdentidad: "",
     fechaNacimiento: "",
-    ciudad: "",
     eventoId: "",
     tipoTicketId: ""
   });
@@ -198,7 +197,6 @@ const Attendees = () => {
           codigo_ticket: ticketCode,
           documento_identidad: newAttendee.documentoIdentidad.trim() || null,
           fecha_nacimiento: newAttendee.fechaNacimiento || null,
-          ciudad: newAttendee.ciudad.trim() || null,
           estado: "confirmado"
         })
         .select()
@@ -219,7 +217,6 @@ const Attendees = () => {
         telefono: "",
         documentoIdentidad: "",
         fechaNacimiento: "",
-        ciudad: "",
         eventoId: "",
         tipoTicketId: ""
       });
@@ -405,12 +402,12 @@ const Attendees = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ciudad">Ciudad</Label>
+                    <Label htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
                     <Input
-                      id="ciudad"
-                      value={newAttendee.ciudad}
-                      onChange={(e) => setNewAttendee({ ...newAttendee, ciudad: e.target.value })}
-                      placeholder="Bogotá"
+                      id="fechaNacimiento"
+                      type="date"
+                      value={newAttendee.fechaNacimiento}
+                      onChange={(e) => setNewAttendee({ ...newAttendee, fechaNacimiento: e.target.value })}
                     />
                   </div>
                 </div>
