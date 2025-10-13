@@ -17,6 +17,7 @@ import {
   StatsSkeleton, 
   TableSkeleton
 } from "@/components/ui/skeleton-components";
+import { BulkEmailDialog } from "@/components/attendees/BulkEmailDialog";
 
 type Asistencia = {
   id: string;
@@ -62,6 +63,7 @@ const Attendees = () => {
   const [rowsPerPage, setRowsPerPage] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isBulkExchangeOpen, setIsBulkExchangeOpen] = useState(false);
+  const [isBulkEmailOpen, setIsBulkEmailOpen] = useState(false);
   const [bulkExchangeData, setBulkExchangeData] = useState({
     nuevoEventoId: "",
     nuevoTipoTicketId: "",
@@ -573,10 +575,7 @@ const Attendees = () => {
         });
       }
     } else if (action === 'email') {
-      toast({
-        title: "Email marketing",
-        description: `Esta función abrirá el módulo de email marketing para ${selectedAttendees.length} asistente(s).`,
-      });
+      setIsBulkEmailOpen(true);
     }
   };
 
@@ -1421,6 +1420,16 @@ const Attendees = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Bulk Email Dialog */}
+        <BulkEmailDialog
+          isOpen={isBulkEmailOpen}
+          onClose={() => {
+            setIsBulkEmailOpen(false);
+            setSelectedAttendees([]);
+          }}
+          selectedAttendees={attendees.filter(a => selectedAttendees.includes(a.id))}
+        />
       </div>
     </Layout>
   );
