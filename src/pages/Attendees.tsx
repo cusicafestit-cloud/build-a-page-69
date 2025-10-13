@@ -498,7 +498,7 @@ const Attendees = () => {
     }
   };
 
-  const handleBulkAction = (action: 'exchange' | 'refund' | 'email') => {
+  const handleBulkAction = async (action: 'exchange' | 'refund' | 'email') => {
     if (selectedAttendees.length === 0) {
       toast({
         title: "Sin selección",
@@ -513,10 +513,65 @@ const Attendees = () => {
     if (action === 'exchange') {
       setIsBulkExchangeOpen(true);
     } else if (action === 'refund') {
-      toast({
-        title: "Reembolso masivo",
-        description: `Esta función abrirá el módulo de reembolsos para ${selectedAttendees.length} asistente(s).`,
-      });
+      try {
+        const selectedAttendeesData = attendees.filter(a => selectedAttendees.includes(a.id));
+        const reembolsosCreados = [];
+
+        for (const asistente of selectedAttendeesData) {
+          // Buscar la primera asistencia confirmada
+          if (asistente.asistencias.length > 0) {
+            const asistenciaConfirmada = asistente.asistencias.find(a => a.estado === 'confirmado') || asistente.asistencias[0];
+            
+            // Obtener el precio del ticket
+            const { data: tipoTicket } = await supabase
+              .from('tipos_tickets')
+              .select('precio')
+              .eq('id', asistenciaConfirmada.tipoTicketId)
+              .single();
+
+            const reembolso = {
+              asistente_id: asistente.id,
+              evento_id: asistenciaConfirmada.eventoId,
+              tipo_ticket_id: asistenciaConfirmada.tipoTicketId,
+              monto: tipoTicket?.precio || 0,
+              estado: 'pendiente',
+              metodo_reembolso: null,
+              notas_admin: 'Creado desde reembolso masivo'
+            };
+            
+            reembolsosCreados.push(reembolso);
+          }
+        }
+
+        if (reembolsosCreados.length === 0) {
+          toast({
+            title: "Error",
+            description: "No se pudieron crear reembolsos para los asistentes seleccionados.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        const { error } = await supabase
+          .from('reembolsos')
+          .insert(reembolsosCreados);
+
+        if (error) throw error;
+
+        toast({
+          title: "Reembolsos creados",
+          description: `Se crearon ${reembolsosCreados.length} solicitudes de reembolso exitosamente.`,
+        });
+
+        setSelectedAttendees([]);
+      } catch (error: any) {
+        console.error("Error creating bulk refunds:", error);
+        toast({
+          title: "Error",
+          description: error.message || "No se pudieron crear los reembolsos.",
+          variant: "destructive"
+        });
+      }
     } else if (action === 'email') {
       toast({
         title: "Email marketing",
