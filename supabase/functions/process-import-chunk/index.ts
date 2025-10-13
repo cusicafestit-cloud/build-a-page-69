@@ -295,6 +295,15 @@ serve(async (req) => {
           continue
         }
         
+        console.log(`🔄 Procesando email: ${emailLower}`)
+        
+        // Primero verificar si el asistente ya existe
+        const { data: existingAsistente } = await supabase
+          .from('asistentes')
+          .select('*')
+          .eq('email', emailLower)
+          .maybeSingle()
+        
         const metadata = {
           genero_musical: generoMusical,
           show_nombre: extractShowName(job.archivo_nombre),
@@ -302,41 +311,36 @@ serve(async (req) => {
           fecha_importacion: new Date().toISOString()
         }
         
-        // UPSERT: insertar o actualizar en una sola operación
+        // Preparar payload con COALESCE de valores existentes
+        // Solo actualizar campos que vienen con valor Y están vacíos en la BD
         const payload: any = {
           email: emailLower,
-          nombre,
-          apellido,
-          evento_nombre: eventoNombre,
-          telefono: extractValue(row, columnMapping.telefono),
-          documento_identidad: extractValue(row, columnMapping.documento_identidad),
-          genero: extractValue(row, columnMapping.genero),
-          fecha_nacimiento: parseExcelDate(extractValue(row, columnMapping.fecha_nacimiento)),
-          direccion: extractValue(row, columnMapping.direccion),
-          seccion: extractValue(row, columnMapping.seccion),
-          tiketera: extractValue(row, columnMapping.tiketera),
-          tipo_ticket_nombre: extractValue(row, columnMapping.tipo_ticket_nombre),
-          fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)),
+          // Mantener valores existentes si el nuevo está vacío
+          nombre: nombre || existingAsistente?.nombre || nombre,
+          apellido: apellido || existingAsistente?.apellido || apellido,
+          evento_nombre: eventoNombre || existingAsistente?.evento_nombre || eventoNombre,
+          telefono: extractValue(row, columnMapping.telefono) || existingAsistente?.telefono || null,
+          documento_identidad: extractValue(row, columnMapping.documento_identidad) || existingAsistente?.documento_identidad || null,
+          genero: extractValue(row, columnMapping.genero) || existingAsistente?.genero || null,
+          fecha_nacimiento: parseExcelDate(extractValue(row, columnMapping.fecha_nacimiento)) || existingAsistente?.fecha_nacimiento || null,
+          direccion: extractValue(row, columnMapping.direccion) || existingAsistente?.direccion || null,
+          seccion: extractValue(row, columnMapping.seccion) || existingAsistente?.seccion || null,
+          tiketera: extractValue(row, columnMapping.tiketera) || existingAsistente?.tiketera || null,
+          tipo_ticket_nombre: extractValue(row, columnMapping.tipo_ticket_nombre) || existingAsistente?.tipo_ticket_nombre || null,
+          fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)) || existingAsistente?.fecha_compra || null,
           estado: 'confirmado',
-          metadata
+          metadata: existingAsistente?.metadata || metadata
         }
         
-        // Asignar evento_id validado
+        // Si viene evento_id, incluirlo
         if (eventoId) {
           payload.evento_id = eventoId
         }
         
-        console.log(`🔄 Procesando email: ${emailLower}`)
         console.log(`📦 Payload:`, JSON.stringify(payload, null, 2))
         
-        // Primero intentar obtener el registro existente
-        const { data: existing } = await supabase
-          .from('asistentes')
-          .select('id, created_at')
-          .eq('email', emailLower)
-          .maybeSingle()
-        
-        const { error: upsertError, data: upsertData } = await supabase
+        // UPSERT en asistentes
+        const { error: upsertError, data: upsertedAsistente } = await supabase
           .from('asistentes')
           .upsert(payload, { 
             onConflict: 'email',
@@ -351,13 +355,51 @@ serve(async (req) => {
         }
         
         // Determinar si fue nuevo o actualizado
-        const wasNew = !existing
+        const wasNew = !existingAsistente
         if (wasNew) {
-          console.log(`✅ Nuevo registro creado: ${emailLower}`)
+          console.log(`✅ Nuevo asistente creado: ${emailLower}`)
           nuevos++
         } else {
-          console.log(`✅ Registro actualizado: ${emailLower}`)
+          console.log(`✅ Asistente actualizado: ${emailLower}`)
           actualizados++
+        }
+        
+        // CREAR REGISTRO EN ASISTENCIAS si hay evento y ticket
+        if (eventoId && ticketEncontrado?.id) {
+          // Verificar si ya existe esta asistencia
+          const { data: existingAsistencia } = await supabase
+            .from('asistencias')
+            .select('id')
+            .eq('asistente_id', upsertedAsistente.id)
+            .eq('evento_id', eventoId)
+            .eq('tipo_ticket_id', ticketEncontrado.id)
+            .maybeSingle()
+          
+          if (!existingAsistencia) {
+            const asistenciaPayload = {
+              asistente_id: upsertedAsistente.id,
+              evento_id: eventoId,
+              tipo_ticket_id: ticketEncontrado.id,
+              fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)) || new Date().toISOString(),
+              estado: 'confirmado',
+              metadata: {
+                fuente_importacion: job.archivo_nombre,
+                fecha_importacion: new Date().toISOString()
+              }
+            }
+            
+            const { error: asistenciaError } = await supabase
+              .from('asistencias')
+              .insert(asistenciaPayload)
+            
+            if (asistenciaError) {
+              console.error(`⚠️ Error creando asistencia para ${emailLower}:`, asistenciaError.message)
+            } else {
+              console.log(`✅ Nueva asistencia creada para ${emailLower} en evento ${eventoEncontrado?.nombre}`)
+            }
+          } else {
+            console.log(`ℹ️ Asistencia ya existe para ${emailLower} en evento ${eventoEncontrado?.nombre}`)
+          }
         }
         
         procesados++
