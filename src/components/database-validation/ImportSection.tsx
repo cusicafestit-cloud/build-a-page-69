@@ -146,19 +146,20 @@ export const ImportSection = () => {
     }
   };
 
-  const handleConfirmImport = async () => {
+  const handleConfirmImport = async (correctedRecords: any[]) => {
     if (!currentQueueId) return;
 
     setIsConfirming(true);
 
     try {
-      // Invocar la Edge Function en modo IMPORT
+      // Invocar la Edge Function en modo IMPORT con los registros corregidos
       const { data: importResult, error: functionError } = await supabase.functions.invoke(
         "process-import-chunk",
         {
           body: { 
             queueId: currentQueueId,
-            mode: "import"
+            mode: "import",
+            correctedRecords: correctedRecords
           },
         }
       );

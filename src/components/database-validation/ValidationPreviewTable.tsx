@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -9,8 +9,17 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, AlertCircle, Upload } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, Upload, Edit2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface PreviewRecord {
   email: string;
@@ -32,7 +41,7 @@ interface PreviewRecord {
 
 interface ValidationPreviewTableProps {
   records: PreviewRecord[];
-  onConfirm: () => void;
+  onConfirm: (correctedRecords: PreviewRecord[]) => void;
   onCancel: () => void;
   isConfirming: boolean;
 }
@@ -44,14 +53,81 @@ export const ValidationPreviewTable = ({
   isConfirming,
 }: ValidationPreviewTableProps) => {
   const [showOnlyErrors, setShowOnlyErrors] = useState(false);
+  const [editedRecords, setEditedRecords] = useState<PreviewRecord[]>(records);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  const validRecords = records.filter(r => r.estado_validacion === "valido");
-  const errorRecords = records.filter(r => r.estado_validacion === "error");
-  const warningRecords = records.filter(r => r.estado_validacion === "advertencia");
+  // Cargar eventos y tickets disponibles
+  const { data: eventos } = useQuery({
+    queryKey: ["eventos-mapeo"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("eventos")
+        .select("id, nombre")
+        .order("nombre");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: tickets } = useQuery({
+    queryKey: ["tickets-mapeo"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tipos_tickets")
+        .select("id, tipo, evento_id")
+        .order("tipo");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    setEditedRecords(records);
+  }, [records]);
+
+  const handleEventoChange = (index: number, eventoId: string) => {
+    const evento = eventos?.find(e => e.id === eventoId);
+    if (!evento) return;
+
+    const updated = [...editedRecords];
+    updated[index] = {
+      ...updated[index],
+      evento_encontrado: {
+        id: evento.id,
+        nombre: evento.nombre,
+      },
+      errores: updated[index].errores.filter(e => !e.includes("evento")),
+      estado_validacion: updated[index].errores.filter(e => !e.includes("evento")).length > 0 ? "error" :
+                         updated[index].advertencias.length > 0 ? "advertencia" : "valido",
+    };
+    setEditedRecords(updated);
+  };
+
+  const handleTicketChange = (index: number, ticketId: string) => {
+    const ticket = tickets?.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    const updated = [...editedRecords];
+    updated[index] = {
+      ...updated[index],
+      ticket_encontrado: {
+        id: ticket.id,
+        tipo: ticket.tipo,
+      },
+      advertencias: updated[index].advertencias.filter(a => !a.includes("ticket")),
+      estado_validacion: updated[index].errores.length > 0 ? "error" :
+                         updated[index].advertencias.filter(a => !a.includes("ticket")).length > 0 ? "advertencia" : "valido",
+    };
+    setEditedRecords(updated);
+  };
+
+  const validRecords = editedRecords.filter(r => r.estado_validacion === "valido");
+  const errorRecords = editedRecords.filter(r => r.estado_validacion === "error");
+  const warningRecords = editedRecords.filter(r => r.estado_validacion === "advertencia");
 
   const displayedRecords = showOnlyErrors 
-    ? records.filter(r => r.estado_validacion !== "valido")
-    : records;
+    ? editedRecords.filter(r => r.estado_validacion !== "valido")
+    : editedRecords;
 
   const getStatusIcon = (estado: string) => {
     switch (estado) {
@@ -137,24 +213,75 @@ export const ValidationPreviewTable = ({
                   <TableCell>{record.nombre}</TableCell>
                   <TableCell>{record.apellido}</TableCell>
                   <TableCell>
-                    {record.evento_encontrado ? (
-                      <div className="space-y-1">
-                        <div className="font-medium">{record.evento_encontrado.nombre}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {record.evento_encontrado.id.substring(0, 8)}...
-                        </div>
-                      </div>
+                    {editingIndex === index || !record.evento_encontrado ? (
+                      <Select
+                        value={record.evento_encontrado?.id || ""}
+                        onValueChange={(value) => handleEventoChange(index, value)}
+                      >
+                        <SelectTrigger className="w-[200px] bg-background">
+                          <SelectValue placeholder="Seleccionar evento" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {eventos?.map((evento) => (
+                            <SelectItem key={evento.id} value={evento.id}>
+                              {evento.nombre}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
-                      <Badge variant="destructive">No encontrado</Badge>
+                      <div className="flex items-center gap-2">
+                        <div className="space-y-1 flex-1">
+                          <div className="font-medium">{record.evento_encontrado.nombre}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {record.evento_encontrado.id.substring(0, 8)}...
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingIndex(index)}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>
-                    {record.ticket_encontrado ? (
-                      <div className="space-y-1">
-                        <div className="font-medium">{record.ticket_encontrado.tipo}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {record.ticket_encontrado.id.substring(0, 8)}...
+                    {editingIndex === index || (!record.ticket_encontrado && record.evento_encontrado) ? (
+                      <Select
+                        value={record.ticket_encontrado?.id || ""}
+                        onValueChange={(value) => handleTicketChange(index, value)}
+                        disabled={!record.evento_encontrado}
+                      >
+                        <SelectTrigger className="w-[200px] bg-background">
+                          <SelectValue placeholder="Seleccionar ticket" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {tickets
+                            ?.filter(t => t.evento_id === record.evento_encontrado?.id)
+                            .map((ticket) => (
+                              <SelectItem key={ticket.id} value={ticket.id}>
+                                {ticket.tipo}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    ) : record.ticket_encontrado ? (
+                      <div className="flex items-center gap-2">
+                        <div className="space-y-1 flex-1">
+                          <div className="font-medium">{record.ticket_encontrado.tipo}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {record.ticket_encontrado.id.substring(0, 8)}...
+                          </div>
                         </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingIndex(index)}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     ) : (
                       <Badge variant="outline">Por defecto</Badge>
@@ -197,7 +324,7 @@ export const ValidationPreviewTable = ({
               Cancelar
             </Button>
             <Button 
-              onClick={onConfirm} 
+              onClick={() => onConfirm(editedRecords)} 
               disabled={validRecords.length === 0 || isConfirming}
               className="gap-2"
             >

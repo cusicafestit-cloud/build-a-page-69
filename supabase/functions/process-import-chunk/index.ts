@@ -16,7 +16,7 @@ serve(async (req) => {
   const startTime = Date.now()
   
   try {
-    const { queueId, mode = "import" } = await req.json()
+    const { queueId, mode = "import", correctedRecords = null } = await req.json()
     
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -124,6 +124,14 @@ serve(async (req) => {
     const errores: any[] = []
     const previewRecords: any[] = []
     
+    // Crear un mapa de correcciones si existen
+    const correctionsMap = new Map()
+    if (correctedRecords && Array.isArray(correctedRecords)) {
+      correctedRecords.forEach((record: any) => {
+        correctionsMap.set(record.email.toLowerCase(), record)
+      })
+    }
+    
     for (let i = 0; i < chunkRows.length; i++) {
       const row = chunkRows[i]
       
@@ -176,6 +184,9 @@ serve(async (req) => {
         
         const emailLower = email.toLowerCase().trim()
         
+        // Verificar si hay correcciones para este registro
+        const correction = correctionsMap.get(emailLower)
+        
         // Extraer IDs opcionales del archivo
         const idEventoFromFile = extractValue(row, columnMapping.id_evento)
         const idTicketFromFile = extractValue(row, columnMapping.id_ticket)
@@ -184,7 +195,14 @@ serve(async (req) => {
         let eventoEncontrado = null
         let eventoId: string | null = null
         
-        if (idEventoFromFile && idEventoFromFile.trim() !== '') {
+        // Si hay corrección aplicada por el usuario, usarla primero
+        if (correction && correction.evento_encontrado) {
+          eventoEncontrado = correction.evento_encontrado
+          eventoId = correction.evento_encontrado.id
+        }
+        
+        // Solo buscar si no hay corrección del usuario
+        if (!eventoEncontrado && idEventoFromFile && idEventoFromFile.trim() !== '') {
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
           if (uuidRegex.test(idEventoFromFile.trim())) {
             eventoId = idEventoFromFile.trim()
@@ -214,7 +232,10 @@ serve(async (req) => {
         let ticketEncontrado = null
         const tipoTicketNombre = extractValue(row, columnMapping.tipo_ticket_nombre)
         
-        if (idTicketFromFile && idTicketFromFile.trim() !== '') {
+        // Si hay corrección de ticket aplicada por el usuario, usarla
+        if (correction && correction.ticket_encontrado) {
+          ticketEncontrado = correction.ticket_encontrado
+        } else if (idTicketFromFile && idTicketFromFile.trim() !== '') {
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
           if (uuidRegex.test(idTicketFromFile.trim())) {
             ticketEncontrado = todosTickets?.find(t => t.id === idTicketFromFile.trim()) || null
