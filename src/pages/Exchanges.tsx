@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Repeat, CheckCircle, XCircle, Clock, Plus, Search, User, Calendar, Ticket, ChevronDown, Check, X, Trash2 } from "lucide-react";
+import { Repeat, CheckCircle, XCircle, Clock, Plus, Search, User, Calendar, Ticket, ChevronDown, Check, X, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -82,6 +82,8 @@ const Exchanges = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [exchangeToDelete, setExchangeToDelete] = useState<Exchange | null>(null);
   const [selectedExchanges, setSelectedExchanges] = useState<string[]>([]);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [newExchange, setNewExchange] = useState({
     attendeeId: "",
@@ -270,6 +272,17 @@ const Exchanges = () => {
     
     return matchesSearch && matchesFilter;
   });
+
+  // Paginación
+  const totalPages = Math.ceil(filteredExchanges.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedExchanges = filteredExchanges.slice(startIndex, endIndex);
+
+  // Reset a página 1 cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, rowsPerPage]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -633,11 +646,14 @@ const Exchanges = () => {
   };
 
   const handleSelectAll = () => {
-    const selectableExchanges = filteredExchanges.filter(e => e.status !== "canjeado");
-    if (selectedExchanges.length === selectableExchanges.length) {
-      setSelectedExchanges([]);
+    const selectableExchanges = paginatedExchanges.filter(e => e.status !== "canjeado");
+    const selectableIds = selectableExchanges.map(e => e.id);
+    const allSelected = selectableIds.every(id => selectedExchanges.includes(id));
+    
+    if (allSelected) {
+      setSelectedExchanges(selectedExchanges.filter(id => !selectableIds.includes(id)));
     } else {
-      setSelectedExchanges(selectableExchanges.map(e => e.id));
+      setSelectedExchanges([...new Set([...selectedExchanges, ...selectableIds])]);
     }
   };
 
@@ -1084,9 +1100,25 @@ const Exchanges = () => {
         {/* Exchanges Table */}
         <Card className="border-none shadow-lg">
           <CardHeader>
-            <CardTitle>
-              Solicitudes de Canje ({filteredExchanges.length})
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>
+                Solicitudes de Canje ({filteredExchanges.length})
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground">Filas por página:</label>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                  className="px-3 py-1.5 border border-input bg-background rounded-md text-sm"
+                >
+                  <option value={20}>20</option>
+                  <option value={40}>40</option>
+                  <option value={100}>100</option>
+                  <option value={200}>200</option>
+                  <option value={400}>400</option>
+                </select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -1095,7 +1127,7 @@ const Exchanges = () => {
                   <TableRow>
                     <TableHead className="w-12">
                       <Checkbox
-                        checked={selectedExchanges.length === filteredExchanges.length && filteredExchanges.length > 0}
+                        checked={selectedExchanges.length > 0 && paginatedExchanges.filter(e => e.status !== "canjeado").every(e => selectedExchanges.includes(e.id))}
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
@@ -1117,7 +1149,7 @@ const Exchanges = () => {
                   />
                 ) : (
                   <TableBody>
-                    {filteredExchanges.length === 0 ? (
+                    {paginatedExchanges.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-8">
                         <div className="text-muted-foreground">
@@ -1129,7 +1161,7 @@ const Exchanges = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredExchanges.map((exchange) => (
+                    paginatedExchanges.map((exchange) => (
                       <TableRow 
                         key={exchange.id}
                         className="cursor-pointer hover:bg-muted/50"
@@ -1233,6 +1265,36 @@ const Exchanges = () => {
                 )}
               </Table>
             </div>
+            
+            {/* Controles de paginación */}
+            {filteredExchanges.length > 0 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {startIndex + 1} a {Math.min(endIndex, filteredExchanges.length)} de {filteredExchanges.length} canjes
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="text-sm">
+                    Página {currentPage} de {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
