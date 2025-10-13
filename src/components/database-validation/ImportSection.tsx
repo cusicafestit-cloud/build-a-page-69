@@ -16,11 +16,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ValidationPreviewTable } from "./ValidationPreviewTable";
 
 export const ImportSection = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [currentQueueId, setCurrentQueueId] = useState<string | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: importaciones, isLoading } = useQuery({
@@ -75,64 +79,112 @@ export const ImportSection = () => {
       return;
     }
 
+    if (files.length > 1) {
+      toast.error("Por favor selecciona solo un archivo a la vez para validación");
+      return;
+    }
+
     setUploading(true);
 
     try {
-      for (const file of files) {
-        // Sanitizar el nombre del archivo removiendo caracteres especiales
-        const sanitizedName = file.name
-          .replace(/[^a-zA-Z0-9.-]/g, '_')
-          .replace(/_+/g, '_');
-        const fileName = `${Date.now()}-${sanitizedName}`;
-        const { error: uploadError } = await supabase.storage
-          .from("imports")
-          .upload(fileName, file);
+      const file = files[0];
+      
+      // Sanitizar el nombre del archivo removiendo caracteres especiales
+      const sanitizedName = file.name
+        .replace(/[^a-zA-Z0-9.-]/g, '_')
+        .replace(/_+/g, '_');
+      const fileName = `${Date.now()}-${sanitizedName}`;
+      const { error: uploadError } = await supabase.storage
+        .from("imports")
+        .upload(fileName, file);
 
-        if (uploadError) throw uploadError;
+      if (uploadError) throw uploadError;
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("imports").getPublicUrl(fileName);
+      const { data: queueData, error: insertError } = await supabase
+        .from("importaciones_queue")
+        .insert({
+          archivo_nombre: file.name,
+          archivo_url: fileName,
+          archivo_size: file.size,
+          estado: "pendiente",
+          chunk_numero: 1,
+          chunk_total: 1,
+          registros_inicio: 0,
+          registros_fin: 0,
+        })
+        .select()
+        .single();
 
-        const { data: queueData, error: insertError } = await supabase
-          .from("importaciones_queue")
-          .insert({
-            archivo_nombre: file.name,
-            archivo_url: fileName, // Usar fileName en lugar de publicUrl
-            archivo_size: file.size,
-            estado: "pendiente",
-            chunk_numero: 1,
-            chunk_total: 1,
-            registros_inicio: 0,
-            registros_fin: 0,
-          })
-          .select()
-          .single();
+      if (insertError) throw insertError;
 
-        if (insertError) throw insertError;
-
-        // Invocar la Edge Function para procesar el archivo
-        const { error: functionError } = await supabase.functions.invoke(
-          "process-import-chunk",
-          {
-            body: { queueId: queueData.id },
-          }
-        );
-
-        if (functionError) {
-          console.error("Error procesando archivo:", functionError);
-          toast.error(`Error procesando ${file.name}: ${functionError.message}`);
+      // Invocar la Edge Function en modo PREVIEW
+      const { data: previewResult, error: functionError } = await supabase.functions.invoke(
+        "process-import-chunk",
+        {
+          body: { 
+            queueId: queueData.id,
+            mode: "preview"
+          },
         }
+      );
+
+      if (functionError) {
+        console.error("Error validando archivo:", functionError);
+        toast.error(`Error validando ${file.name}: ${functionError.message}`);
+        return;
       }
 
-      toast.success(`${files.length} archivo(s) procesándose exitosamente`);
+      // Mostrar preview
+      setPreviewData(previewResult.preview);
+      setCurrentQueueId(queueData.id);
+      toast.success("Validación completada. Revisa los datos antes de confirmar.");
       setFiles([]);
-      queryClient.invalidateQueries({ queryKey: ["importaciones"] });
     } catch (error: any) {
-      toast.error(`Error al cargar archivos: ${error.message}`);
+      toast.error(`Error al cargar archivo: ${error.message}`);
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!currentQueueId) return;
+
+    setIsConfirming(true);
+
+    try {
+      // Invocar la Edge Function en modo IMPORT
+      const { data: importResult, error: functionError } = await supabase.functions.invoke(
+        "process-import-chunk",
+        {
+          body: { 
+            queueId: currentQueueId,
+            mode: "import"
+          },
+        }
+      );
+
+      if (functionError) {
+        throw new Error(functionError.message);
+      }
+
+      toast.success(
+        `Importación completada: ${importResult.nuevos} nuevos, ${importResult.actualizados} actualizados`
+      );
+      
+      setPreviewData(null);
+      setCurrentQueueId(null);
+      queryClient.invalidateQueries({ queryKey: ["importaciones"] });
+    } catch (error: any) {
+      toast.error(`Error al importar: ${error.message}`);
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  const handleCancelPreview = () => {
+    setPreviewData(null);
+    setCurrentQueueId(null);
+    toast.info("Importación cancelada");
   };
 
   const getEstadoBadge = (estado: string) => {
@@ -147,6 +199,15 @@ export const ImportSection = () => {
 
   return (
     <div className="space-y-6">
+      {previewData && (
+        <ValidationPreviewTable
+          records={previewData}
+          onConfirm={handleConfirmImport}
+          onCancel={handleCancelPreview}
+          isConfirming={isConfirming}
+        />
+      )}
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -178,10 +239,10 @@ export const ImportSection = () => {
               <strong>Columnas obligatorias:</strong> Email, Nombre, Apellido, Nombre Evento
             </p>
             <p className="text-xs text-muted-foreground">
-              <strong>Columnas opcionales:</strong> ID Evento, ID Ticket (si no se proporcionan, se usa "Shows" por defecto)
+              <strong>Columnas opcionales:</strong> ID Evento, ID Ticket
             </p>
             <p className="text-xs text-muted-foreground">
-              Las validaciones de integridad se ejecutan automáticamente después de la importación.
+              Se mostrará una tabla de validación previa donde podrás confirmar el mapeo de eventos y tickets antes de importar.
             </p>
             
             <div
@@ -198,7 +259,7 @@ export const ImportSection = () => {
                 id="file"
                 type="file"
                 accept=".xlsx,.xls"
-                multiple
+                multiple={false}
                 onChange={handleFileChange}
                 disabled={uploading}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -218,24 +279,30 @@ export const ImportSection = () => {
             
             {files.length > 0 && (
               <div className="text-sm text-muted-foreground">
-                {files.length} archivo(s) seleccionado(s): {files.map(f => f.name).join(', ')}
+                {files.length === 1 ? (
+                  <>Archivo seleccionado: <span className="font-medium">{files[0].name}</span></>
+                ) : (
+                  <span className="text-yellow-600">
+                    ⚠️ Solo se puede validar un archivo a la vez. Se usará: {files[0].name}
+                  </span>
+                )}
               </div>
             )}
           </div>
           <Button
             onClick={handleUpload}
-            disabled={files.length === 0 || uploading}
+            disabled={files.length === 0 || uploading || previewData !== null}
             className="w-full"
           >
             {uploading ? (
               <>
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Procesando {files.length} archivo(s)...
+                Validando archivo...
               </>
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Procesar {files.length > 0 ? `${files.length} archivo(s)` : 'Archivos'}
+                Validar Archivo
               </>
             )}
           </Button>

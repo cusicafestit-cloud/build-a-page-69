@@ -16,7 +16,7 @@ serve(async (req) => {
   const startTime = Date.now()
   
   try {
-    const { queueId } = await req.json()
+    const { queueId, mode = "import" } = await req.json()
     
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -86,14 +86,28 @@ serve(async (req) => {
     
     console.log('Mapeo de columnas:', columnMapping)
     
-    // 8. Buscar evento "Shows" (sin fallback a UUID dummy)
+    // 8. Buscar evento "Shows" y obtener todos los eventos para el mapeo
     const { data: showsEvento } = await supabase
       .from('eventos')
-      .select('id')
+      .select('id, nombre')
       .eq('nombre', 'Shows')
       .maybeSingle()
     
     const eventoShowsId = showsEvento?.id || null
+    
+    // Obtener todos los eventos para el mapeo en modo preview
+    const { data: todosEventos } = await supabase
+      .from('eventos')
+      .select('id, nombre')
+    
+    const eventosMap = new Map(todosEventos?.map(e => [e.nombre.toLowerCase(), e]) || [])
+    
+    // Obtener todos los tipos de tickets para el mapeo
+    const { data: todosTickets } = await supabase
+      .from('tipos_tickets')
+      .select('id, tipo, evento_id')
+    
+    const ticketsMap = new Map(todosTickets?.map(t => [t.tipo.toLowerCase(), t]) || [])
     
     // 8.1 Validar que las columnas obligatorias existen
     const camposObligatorios = ['email', 'nombre', 'apellido', 'evento_nombre']
@@ -108,6 +122,7 @@ serve(async (req) => {
     let nuevos = 0
     let actualizados = 0
     const errores: any[] = []
+    const previewRecords: any[] = []
     
     for (let i = 0; i < chunkRows.length; i++) {
       const row = chunkRows[i]
@@ -165,6 +180,100 @@ serve(async (req) => {
         const idEventoFromFile = extractValue(row, columnMapping.id_evento)
         const idTicketFromFile = extractValue(row, columnMapping.id_ticket)
         
+        // Buscar evento correspondiente
+        let eventoEncontrado = null
+        let eventoId: string | null = null
+        
+        if (idEventoFromFile && idEventoFromFile.trim() !== '') {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+          if (uuidRegex.test(idEventoFromFile.trim())) {
+            eventoId = idEventoFromFile.trim()
+            const evento = todosEventos?.find(e => e.id === eventoId)
+            if (evento) {
+              eventoEncontrado = evento
+            }
+          }
+        }
+        
+        // Si no hay ID de evento, buscar por nombre
+        if (!eventoEncontrado) {
+          const eventoNombreLower = eventoNombre.toLowerCase().trim()
+          eventoEncontrado = eventosMap.get(eventoNombreLower) || null
+          if (eventoEncontrado) {
+            eventoId = eventoEncontrado.id
+          }
+        }
+        
+        // Si no se encuentra evento específico, usar Shows por defecto
+        if (!eventoEncontrado && eventoShowsId) {
+          eventoId = eventoShowsId
+          eventoEncontrado = showsEvento
+        }
+        
+        // Buscar ticket correspondiente
+        let ticketEncontrado = null
+        const tipoTicketNombre = extractValue(row, columnMapping.tipo_ticket_nombre)
+        
+        if (idTicketFromFile && idTicketFromFile.trim() !== '') {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+          if (uuidRegex.test(idTicketFromFile.trim())) {
+            ticketEncontrado = todosTickets?.find(t => t.id === idTicketFromFile.trim()) || null
+          }
+        } else if (tipoTicketNombre) {
+          const ticketNombreLower = tipoTicketNombre.toLowerCase().trim()
+          ticketEncontrado = ticketsMap.get(ticketNombreLower) || null
+        }
+        
+        // Validaciones para modo preview
+        const recordErrors: string[] = []
+        const recordWarnings: string[] = []
+        
+        if (!eventoEncontrado) {
+          recordErrors.push(`No se encontró el evento: ${eventoNombre}`)
+        }
+        
+        if (!ticketEncontrado && tipoTicketNombre) {
+          recordWarnings.push(`No se encontró el tipo de ticket: ${tipoTicketNombre}`)
+        }
+        
+        // En modo PREVIEW, solo recopilar información
+        if (mode === "preview") {
+          previewRecords.push({
+            email: emailLower,
+            nombre,
+            apellido,
+            evento_nombre: eventoNombre,
+            evento_encontrado: eventoEncontrado ? {
+              id: eventoEncontrado.id,
+              nombre: eventoEncontrado.nombre
+            } : null,
+            ticket_encontrado: ticketEncontrado ? {
+              id: ticketEncontrado.id,
+              tipo: ticketEncontrado.tipo
+            } : null,
+            estado_validacion: recordErrors.length > 0 ? "error" : 
+                               recordWarnings.length > 0 ? "advertencia" : "valido",
+            errores: recordErrors,
+            advertencias: recordWarnings
+          })
+          
+          if (recordErrors.length === 0) {
+            procesados++
+          }
+          
+          continue
+        }
+        
+        // En modo IMPORT, proceder solo si hay evento y ticket válidos
+        if (!eventoEncontrado) {
+          errores.push({
+            fila: job.registros_inicio + i + 2,
+            error: `No se encontró el evento: ${eventoNombre}`,
+            email: emailLower
+          })
+          continue
+        }
+        
         const metadata = {
           genero_musical: generoMusical,
           show_nombre: extractShowName(job.archivo_nombre),
@@ -191,17 +300,9 @@ serve(async (req) => {
           metadata
         }
         
-        // Solo incluir evento_id si existe en el archivo O usar el de Shows por defecto
-        if (idEventoFromFile && idEventoFromFile.trim() !== '') {
-          // Validar que sea un UUID válido
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-          if (uuidRegex.test(idEventoFromFile.trim())) {
-            payload.evento_id = idEventoFromFile.trim()
-          } else {
-            console.warn(`⚠️ ID Evento inválido para ${emailLower}: ${idEventoFromFile}`)
-          }
-        } else if (eventoShowsId) {
-          payload.evento_id = eventoShowsId
+        // Asignar evento_id validado
+        if (eventoId) {
+          payload.evento_id = eventoId
         }
         
         console.log(`🔄 Procesando email: ${emailLower}`)
@@ -259,7 +360,30 @@ serve(async (req) => {
       }
     }
     
-    // 10. Actualizar trabajo como completado
+    // En modo PREVIEW, retornar datos de vista previa sin guardar
+    if (mode === "preview") {
+      await supabase
+        .from('importaciones_queue')
+        .update({
+          estado: 'pendiente', // Mantener pendiente para posterior importación
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', queueId)
+      
+      return new Response(JSON.stringify({
+        success: true,
+        mode: "preview",
+        preview: previewRecords,
+        total: previewRecords.length,
+        validos: previewRecords.filter(r => r.estado_validacion === "valido").length,
+        errores: previewRecords.filter(r => r.estado_validacion === "error").length,
+        advertencias: previewRecords.filter(r => r.estado_validacion === "advertencia").length
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
+    // 10. Actualizar trabajo como completado (solo en modo IMPORT)
     const duracion = Math.floor((Date.now() - startTime) / 1000)
     
     await supabase
