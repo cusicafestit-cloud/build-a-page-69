@@ -313,7 +313,7 @@ serve(async (req) => {
         
         // Preparar payload con COALESCE de valores existentes
         // Solo actualizar campos que vienen con valor Y están vacíos en la BD
-        const payload: any = {
+        const asistentePayload: any = {
           email: emailLower,
           // Mantener valores existentes si el nuevo está vacío
           nombre: nombre || existingAsistente?.nombre || nombre,
@@ -332,17 +332,14 @@ serve(async (req) => {
           metadata: existingAsistente?.metadata || metadata
         }
         
-        // Si viene evento_id, incluirlo
-        if (eventoId) {
-          payload.evento_id = eventoId
-        }
+        // NO incluir evento_id en asistentes - esa relación va en la tabla asistencias
         
-        console.log(`📦 Payload:`, JSON.stringify(payload, null, 2))
+        console.log(`📦 Payload asistente:`, JSON.stringify(asistentePayload, null, 2))
         
-        // UPSERT en asistentes
+        // UPSERT en asistentes (sin evento_id)
         const { error: upsertError, data: upsertedAsistente } = await supabase
           .from('asistentes')
-          .upsert(payload, { 
+          .upsert(asistentePayload, {
             onConflict: 'email',
             ignoreDuplicates: false 
           })
