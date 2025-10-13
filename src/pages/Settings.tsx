@@ -18,9 +18,9 @@ const Settings = () => {
   const [generalSettings, setGeneralSettings] = useState({
     companyName: "Cusica Events",
     companyEmail: "admin@cusica.com",
-    companyPhone: "+57 300 123 4567",
-    address: "Calle 123 #45-67, Bogotá, Colombia",
-    timezone: "America/Bogota"
+    companyPhone: "+58 412 123 4567",
+    address: "Caracas, Venezuela",
+    timezone: "America/Caracas"
   });
 
   const [notifications, setNotifications] = useState({
@@ -217,7 +217,8 @@ const Settings = () => {
                       onChange={(e) => setGeneralSettings({ ...generalSettings, timezone: e.target.value })}
                       className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
                     >
-                      <option value="America/Bogota">Bogotá (GMT-5)</option>
+                      <option value="America/Caracas">Caracas, Venezuela (GMT-4)</option>
+                      <option value="America/Bogota">Bogotá, Colombia (GMT-5)</option>
                       <option value="America/Mexico_City">Ciudad de México (GMT-6)</option>
                       <option value="America/New_York">Nueva York (GMT-5)</option>
                     </select>
