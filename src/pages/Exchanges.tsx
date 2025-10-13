@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Repeat, CheckCircle, XCircle, Clock, Plus, Search, User, Calendar, Ticket, ChevronDown, Check, X } from "lucide-react";
+import { Repeat, CheckCircle, XCircle, Clock, Plus, Search, User, Calendar, Ticket, ChevronDown, Check, X, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -77,6 +78,8 @@ const Exchanges = () => {
   const [selectedExchange, setSelectedExchange] = useState<Exchange | null>(null);
   const [isProcessDialogOpen, setIsProcessDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [exchangeToDelete, setExchangeToDelete] = useState<Exchange | null>(null);
 
   const [newExchange, setNewExchange] = useState({
     attendeeId: "",
@@ -544,6 +547,34 @@ const Exchanges = () => {
     };
   }, [refetch]);
 
+  const handleDeleteExchange = async () => {
+    if (!exchangeToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('canjes')
+        .delete()
+        .eq('id', exchangeToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Canje eliminado",
+        description: "El canje ha sido eliminado exitosamente.",
+      });
+
+      setIsDeleteDialogOpen(false);
+      setExchangeToDelete(null);
+    } catch (error) {
+      console.error("Error al eliminar canje:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el canje. Intente nuevamente.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const stats = [
     { title: "Total Canjes", value: exchanges.length.toString(), icon: Repeat },
     { title: "Pendientes", value: exchanges.filter(e => e.status === "pending").length.toString(), icon: Clock },
@@ -933,8 +964,8 @@ const Exchanges = () => {
                           {new Date(exchange.requestDate).toLocaleDateString()}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          {exchange.status === "pending" && (
-                            <div className="flex gap-2">
+                          <div className="flex gap-2">
+                            {exchange.status === "pending" && (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -945,8 +976,18 @@ const Exchanges = () => {
                               >
                                 Procesar
                               </Button>
-                            </div>
-                          )}
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setExchangeToDelete(exchange);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -1068,6 +1109,27 @@ const Exchanges = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Eliminar canje?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción no se puede deshacer. Se eliminará permanentemente el canje de{" "}
+                {exchangeToDelete?.attendeeName}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setExchangeToDelete(null)}>
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteExchange} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
