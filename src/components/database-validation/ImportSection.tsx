@@ -160,8 +160,10 @@ export const ImportSection = () => {
             <p className="text-sm text-muted-foreground">
               Usa la{" "}
               <a
-                href="/Plantilla_Importacion.xlsx"
+                href="https://zhvfoyglmdhsmavzbevc.supabase.co/storage/v1/object/sign/imports/Plantilla.xlsx?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8xNDg5NWY5MS1jZWJkLTQxNzEtOTQzZC03YWMxOTdhZjllMGIiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJpbXBvcnRzL1BsYW50aWxsYS54bHN4IiwiaWF0IjoxNzYwMzcxOTk4LCJleHAiOjE4MjM0NDM5OTh9.rCbK7DecN4uQX7F8WVuBVImxauzsjiDjnVGNgFLrhNw"
                 download
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-primary hover:underline font-medium"
               >
                 plantilla oficial
