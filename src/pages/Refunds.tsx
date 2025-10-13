@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { DollarSign, Search, CheckCircle, XCircle, Clock, Eye, Edit } from "lucide-react";
+import { DollarSign, Search, CheckCircle, XCircle, Clock, Eye, Edit, ChevronLeft, ChevronRight } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CreateRefundDialog } from "@/components/refunds/CreateRefundDialog";
@@ -29,12 +31,17 @@ const Refunds = () => {
   const [searchAttendee, setSearchAttendee] = useState("");
   const [searchEvent, setSearchEvent] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterBanco, setFilterBanco] = useState<string>("all");
+  const [filterFechaInicio, setFilterFechaInicio] = useState("");
+  const [filterFechaFin, setFilterFechaFin] = useState("");
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedRefund, setSelectedRefund] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
 
-  const { data: refunds = [], isLoading } = useQuery({
-    queryKey: ["refunds", searchAttendee, searchEvent, filterStatus],
+  const { data: allRefunds = [], isLoading } = useQuery({
+    queryKey: ["refunds", searchAttendee, searchEvent, filterStatus, filterBanco, filterFechaInicio, filterFechaFin],
     queryFn: async () => {
       let query = supabase
         .from("reembolsos")
@@ -58,11 +65,41 @@ const Refunds = () => {
         query = query.eq("estado", filterStatus);
       }
 
+      if (filterBanco !== "all") {
+        query = query.eq("banco", filterBanco);
+      }
+
+      if (filterFechaInicio) {
+        query = query.gte("fecha_solicitud", filterFechaInicio);
+      }
+
+      if (filterFechaFin) {
+        query = query.lte("fecha_solicitud", filterFechaFin);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
   });
+
+  // Get unique banks for filter
+  const uniqueBanks = React.useMemo(() => {
+    const banks = allRefunds
+      .map((r: any) => r.banco)
+      .filter((b): b is string => b !== null && b !== undefined);
+    return Array.from(new Set(banks)).sort();
+  }, [allRefunds]);
+
+  // Pagination
+  const totalPages = Math.ceil(allRefunds.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const refunds = allRefunds.slice(startIndex, endIndex);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchAttendee, searchEvent, filterStatus, filterBanco, filterFechaInicio, filterFechaFin, rowsPerPage]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -80,10 +117,10 @@ const Refunds = () => {
   };
 
   const stats = [
-    { title: "Total Reembolsos", value: refunds.length.toString(), icon: DollarSign },
-    { title: "Pendientes", value: refunds.filter((r: any) => r.estado === "pendiente").length.toString(), icon: Clock },
-    { title: "Aprobados", value: refunds.filter((r: any) => r.estado === "aprobado").length.toString(), icon: CheckCircle },
-    { title: "Monto Total", value: `$${refunds.reduce((sum: number, r: any) => sum + (r.monto || 0), 0).toLocaleString()}`, icon: DollarSign },
+    { title: "Total Reembolsos", value: allRefunds.length.toString(), icon: DollarSign },
+    { title: "Pendientes", value: allRefunds.filter((r: any) => r.estado === "pendiente").length.toString(), icon: Clock },
+    { title: "Aprobados", value: allRefunds.filter((r: any) => r.estado === "aprobado").length.toString(), icon: CheckCircle },
+    { title: "Monto Total", value: `$${allRefunds.reduce((sum: number, r: any) => sum + (r.monto || 0), 0).toLocaleString()}`, icon: DollarSign },
   ];
 
   return (
@@ -128,17 +165,17 @@ const Refunds = () => {
                 <CardTitle>Solicitudes de Reembolso</CardTitle>
                 <CreateRefundDialog />
               </div>
-              <div className="flex gap-4">
-                <div className="relative flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
-                    placeholder="Buscar asistente (nombre, email)..."
+                    placeholder="Buscar asistente..."
                     value={searchAttendee}
                     onChange={(e) => setSearchAttendee(e.target.value)}
                     className="pl-10"
                   />
                 </div>
-                <div className="relative flex-1">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     placeholder="Buscar evento..."
@@ -146,6 +183,69 @@ const Refunds = () => {
                     onChange={(e) => setSearchEvent(e.target.value)}
                     className="pl-10"
                   />
+                </div>
+                <Select value={filterBanco} onValueChange={setFilterBanco}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filtrar por banco" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
+                    <SelectItem value="all">Todos los bancos</SelectItem>
+                    {uniqueBanks.map((banco) => (
+                      <SelectItem key={banco} value={banco}>
+                        {banco}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filtrar por estado" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="pendiente">Pendiente</SelectItem>
+                    <SelectItem value="aprobado">Aprobado</SelectItem>
+                    <SelectItem value="procesado">Procesado</SelectItem>
+                    <SelectItem value="rechazado">Rechazado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="fecha-inicio" className="text-sm">Fecha inicio</Label>
+                  <Input
+                    id="fecha-inicio"
+                    type="date"
+                    value={filterFechaInicio}
+                    onChange={(e) => setFilterFechaInicio(e.target.value)}
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="fecha-fin" className="text-sm">Fecha fin</Label>
+                  <Input
+                    id="fecha-fin"
+                    type="date"
+                    value={filterFechaFin}
+                    onChange={(e) => setFilterFechaFin(e.target.value)}
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="rows-per-page" className="text-sm">Filas por página</Label>
+                  <Select 
+                    value={rowsPerPage.toString()} 
+                    onValueChange={(value) => setRowsPerPage(Number(value))}
+                  >
+                    <SelectTrigger id="rows-per-page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      <SelectItem value="20">20 filas</SelectItem>
+                      <SelectItem value="40">40 filas</SelectItem>
+                      <SelectItem value="100">100 filas</SelectItem>
+                      <SelectItem value="200">200 filas</SelectItem>
+                      <SelectItem value="400">400 filas</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -233,6 +333,36 @@ const Refunds = () => {
                 )}
               </TableBody>
             </Table>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {startIndex + 1} a {Math.min(endIndex, allRefunds.length)} de {allRefunds.length} reembolsos
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="text-sm">
+                    Página {currentPage} de {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
