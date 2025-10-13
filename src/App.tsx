@@ -14,6 +14,7 @@ import Settings from "./pages/Settings";
 import Academy from "./pages/Academy";
 import CourseStudents from "./pages/CourseStudents";
 import Users from "./pages/Users";
+import Roles from "./pages/Roles";
 import DatabaseValidation from "./pages/DatabaseValidationNew";
 import TicketExchange from "./pages/TicketExchange";
 import Auth from "./pages/Auth";
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/academy" element={<ProtectedRoute><Academy /></ProtectedRoute>} />
           <Route path="/academy/students" element={<ProtectedRoute><CourseStudents /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+          <Route path="/roles" element={<ProtectedRoute><Roles /></ProtectedRoute>} />
           <Route path="/database-validation" element={<ProtectedRoute><DatabaseValidation /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserCog, Search, Plus, Shield, User, Crown, Edit, Trash2, Power } from "lucide-react";
+import { UserCog, Search, Plus, Shield, User, Crown, Edit, Trash2, Power, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EditUserDialog } from "@/components/users/EditUserDialog";
 import { DeleteUserDialog } from "@/components/users/DeleteUserDialog";
+import { useNavigate } from "react-router-dom";
 
 type SystemUser = {
   id: string;
@@ -28,6 +29,7 @@ type SystemUser = {
 
 const Users = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewUserOpen, setIsNewUserOpen] = useState(false);
   const [editUser, setEditUser] = useState<SystemUser | null>(null);
@@ -167,7 +169,16 @@ const Users = () => {
               Administra los usuarios del sistema y sus permisos
             </p>
           </div>
-          <Dialog open={isNewUserOpen} onOpenChange={setIsNewUserOpen}>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/roles")}
+              className="border-primary/20 hover:bg-primary/10"
+            >
+              <Settings2 className="w-4 h-4 mr-2" />
+              Gestión de Roles
+            </Button>
+            <Dialog open={isNewUserOpen} onOpenChange={setIsNewUserOpen}>
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
                 <Plus className="w-4 h-4 mr-2" />
@@ -248,7 +259,8 @@ const Users = () => {
                 <Button onClick={handleCreateUser}>Crear Usuario</Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         {/* Stats Grid */}
