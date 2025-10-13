@@ -133,10 +133,9 @@ serve(async (req) => {
         }
         
         if (existing) {
-          // ACTUALIZAR TODOS los campos desde el archivo importado
+          // ACTUALIZAR todos los campos EXCEPTO el email (que es el identificador)
           const updates: any = { 
-            email: emailLower, // Actualizar email
-            nombre: nombre, // Siempre actualizar nombre
+            nombre: nombre,
             updated_at: new Date().toISOString(),
             metadata: metadata
           }
