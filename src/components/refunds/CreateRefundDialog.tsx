@@ -4,14 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon, Plus, ChevronDown, Check } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 const BANCOS_VENEZUELA = [
   { codigo: "0102", nombre: "Banco de Venezuela" },
@@ -48,51 +49,96 @@ export function CreateRefundDialog({ onSuccess }: CreateRefundDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date>();
-  const [searchEmail, setSearchEmail] = useState("");
-  const [searchEvent, setSearchEvent] = useState("");
   const queryClient = useQueryClient();
 
+  const [attendeeSearchOpen, setAttendeeSearchOpen] = useState(false);
+  const [attendeeSearchTerm, setAttendeeSearchTerm] = useState("");
+  const [selectedAttendee, setSelectedAttendee] = useState<any>(null);
+  const [selectedAsistenciaId, setSelectedAsistenciaId] = useState("");
+
   const [formData, setFormData] = useState({
-    email: "",
     banco: "",
     codigo_banco: "",
-    fecha_transferencia: "",
     numero_cuenta: "",
     monto: "",
-    evento_id: "",
-    asistente_id: "",
-    tipo_ticket_id: "",
     estado: "pendiente",
+  });
+
+  // Fetch attendees
+  const { data: attendees = [] } = useQuery({
+    queryKey: ["attendees-for-refund"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("asistentes")
+        .select("id, nombre, apellido, email")
+        .order("nombre");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch asistencias (tickets) for selected attendee
+  const { data: asistencias = [] } = useQuery({
+    queryKey: ["attendee-asistencias", selectedAttendee?.id],
+    queryFn: async () => {
+      if (!selectedAttendee?.id) return [];
+      const { data, error } = await supabase
+        .from("asistencias")
+        .select(`
+          id,
+          evento_id,
+          tipo_ticket_id,
+          codigo_ticket,
+          eventos:evento_id(nombre, fecha),
+          tipos_tickets:tipo_ticket_id(tipo, precio)
+        `)
+        .eq("asistente_id", selectedAttendee.id)
+        .eq("estado", "confirmado");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedAttendee?.id,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!selectedAttendee) {
+      toast.error("Debe seleccionar un asistente");
+      return;
+    }
+
+    if (!selectedAsistenciaId) {
+      toast.error("Debe seleccionar un ticket específico");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      const selectedAsistencia = asistencias.find(a => a.id === selectedAsistenciaId);
+      if (!selectedAsistencia) {
+        throw new Error("No se encontró la asistencia seleccionada");
+      }
+
       const { error } = await supabase.from("reembolsos").insert({
-        ...formData,
-        fecha_transferencia: date ? format(date, "yyyy-MM-dd") : null,
+        asistente_id: selectedAttendee.id,
+        evento_id: selectedAsistencia.evento_id,
+        tipo_ticket_id: selectedAsistencia.tipo_ticket_id,
+        banco: formData.banco,
+        codigo_banco: formData.codigo_banco,
+        numero_cuenta: formData.numero_cuenta,
         monto: parseFloat(formData.monto),
+        fecha_transferencia: date ? format(date, "yyyy-MM-dd") : null,
+        estado: formData.estado,
+        fecha_solicitud: new Date().toISOString(),
       });
 
       if (error) throw error;
 
       toast.success("Reembolso creado exitosamente");
       setOpen(false);
-      setFormData({
-        email: "",
-        banco: "",
-        codigo_banco: "",
-        fecha_transferencia: "",
-        numero_cuenta: "",
-        monto: "",
-        evento_id: "",
-        asistente_id: "",
-        tipo_ticket_id: "",
-        estado: "pendiente",
-      });
-      setDate(undefined);
+      resetForm();
       queryClient.invalidateQueries({ queryKey: ["refunds"] });
       onSuccess?.();
     } catch (error) {
@@ -101,6 +147,20 @@ export function CreateRefundDialog({ onSuccess }: CreateRefundDialogProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      banco: "",
+      codigo_banco: "",
+      numero_cuenta: "",
+      monto: "",
+      estado: "pendiente",
+    });
+    setDate(undefined);
+    setSelectedAttendee(null);
+    setSelectedAsistenciaId("");
+    setAttendeeSearchTerm("");
   };
 
   const handleBankChange = (value: string) => {
@@ -113,6 +173,21 @@ export function CreateRefundDialog({ onSuccess }: CreateRefundDialogProps) {
       });
     }
   };
+
+  const filteredAttendees = attendees.filter(att =>
+    att.nombre?.toLowerCase().includes(attendeeSearchTerm.toLowerCase()) ||
+    att.apellido?.toLowerCase().includes(attendeeSearchTerm.toLowerCase()) ||
+    att.email?.toLowerCase().includes(attendeeSearchTerm.toLowerCase())
+  );
+
+  const handleSelectAttendee = (attendee: any) => {
+    setSelectedAttendee(attendee);
+    setAttendeeSearchOpen(false);
+    setAttendeeSearchTerm(`${attendee.nombre} ${attendee.apellido} (${attendee.email})`);
+    setSelectedAsistenciaId(""); // Reset selected ticket
+  };
+
+  const selectedAsistencia = asistencias.find(a => a.id === selectedAsistenciaId);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -127,17 +202,105 @@ export function CreateRefundDialog({ onSuccess }: CreateRefundDialogProps) {
           <DialogTitle>Crear Nuevo Reembolso</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Selector de Asistente */}
           <div className="space-y-2">
-            <Label htmlFor="email">Email del Cliente</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-            />
+            <Label>Asistente</Label>
+            <Popover open={attendeeSearchOpen} onOpenChange={setAttendeeSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={attendeeSearchOpen}
+                  className="w-full justify-between"
+                >
+                  {selectedAttendee ? (
+                    <span>{selectedAttendee.nombre} {selectedAttendee.apellido} ({selectedAttendee.email})</span>
+                  ) : (
+                    "Buscar asistente..."
+                  )}
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[500px] p-0">
+                <Command>
+                  <CommandInput 
+                    placeholder="Buscar por nombre o email..." 
+                    value={attendeeSearchTerm}
+                    onValueChange={setAttendeeSearchTerm}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No se encontraron asistentes.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredAttendees.map((attendee) => (
+                        <CommandItem
+                          key={attendee.id}
+                          value={`${attendee.nombre} ${attendee.email}`}
+                          onSelect={() => handleSelectAttendee(attendee)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedAttendee?.id === attendee.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{attendee.nombre} {attendee.apellido}</span>
+                            <span className="text-sm text-muted-foreground">{attendee.email}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
+
+          {/* Selector de Ticket (Asistencia) */}
+          {selectedAttendee && (
+            <div className="space-y-2">
+              <Label>Ticket a Reembolsar</Label>
+              <Select value={selectedAsistenciaId} onValueChange={setSelectedAsistenciaId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione el ticket" />
+                </SelectTrigger>
+                <SelectContent>
+                  {asistencias.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground text-center">
+                      Este asistente no tiene tickets confirmados
+                    </div>
+                  ) : (
+                    asistencias.map((asistencia: any) => (
+                      <SelectItem key={asistencia.id} value={asistencia.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{asistencia.eventos?.nombre}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {asistencia.tipos_tickets?.tipo} - ${asistencia.tipos_tickets?.precio} - {asistencia.codigo_ticket}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Monto - autocompletado del precio del ticket */}
+          {selectedAsistencia && (
+            <div className="space-y-2">
+              <Label htmlFor="monto">Monto del Reembolso</Label>
+              <Input
+                id="monto"
+                type="number"
+                step="0.01"
+                placeholder="Ingrese el monto"
+                value={formData.monto || selectedAsistencia?.tipos_tickets?.precio || ""}
+                onChange={(e) => setFormData({ ...formData, monto: e.target.value })}
+                required
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="banco">Banco</Label>
@@ -156,6 +319,17 @@ export function CreateRefundDialog({ onSuccess }: CreateRefundDialogProps) {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="cuenta">Número de cuenta</Label>
+            <Input
+              id="cuenta"
+              placeholder="Ingrese el número de cuenta"
+              value={formData.numero_cuenta}
+              onChange={(e) => setFormData({ ...formData, numero_cuenta: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="fecha">Fecha de transferencia</Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -167,7 +341,7 @@ export function CreateRefundDialog({ onSuccess }: CreateRefundDialogProps) {
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  {date ? format(date, "PPP") : <span>Seleccione una fecha</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -180,40 +354,6 @@ export function CreateRefundDialog({ onSuccess }: CreateRefundDialogProps) {
                 />
               </PopoverContent>
             </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cuenta">Número de cuenta</Label>
-            <Input
-              id="cuenta"
-              placeholder="Ingrese el numero de cuenta"
-              value={formData.numero_cuenta}
-              onChange={(e) => setFormData({ ...formData, numero_cuenta: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="monto">Monto</Label>
-            <Input
-              id="monto"
-              type="number"
-              step="0.01"
-              placeholder="Ingrese el numero de cuenta"
-              value={formData.monto}
-              onChange={(e) => setFormData({ ...formData, monto: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="evento">Evento</Label>
-            <Input
-              id="evento"
-              placeholder="Seleccione el evento"
-              value={searchEvent}
-              onChange={(e) => setSearchEvent(e.target.value)}
-            />
           </div>
 
           <div className="space-y-2">
