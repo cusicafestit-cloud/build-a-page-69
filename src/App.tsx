@@ -14,7 +14,6 @@ import Academy from "./pages/Academy";
 import CourseStudents from "./pages/CourseStudents";
 import Users from "./pages/Users";
 import DatabaseValidation from "./pages/DatabaseValidationNew";
-import PublicExchange from "./pages/PublicExchange";
 import TicketExchange from "./pages/TicketExchange";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -30,7 +29,6 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
-          <Route path="/canje-publico" element={<PublicExchange />} />
           <Route path="/canje" element={<TicketExchange />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
