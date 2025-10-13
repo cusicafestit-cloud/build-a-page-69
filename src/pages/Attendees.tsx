@@ -50,7 +50,9 @@ const Attendees = () => {
     telefono: "",
     documentoIdentidad: "",
     fechaNacimiento: "",
-    ciudad: ""
+    ciudad: "",
+    eventoId: "",
+    tipoTicketId: ""
   });
 
   const [editAttendee, setEditAttendee] = useState({
@@ -75,6 +77,22 @@ const Attendees = () => {
       if (error) throw error;
       return data;
     },
+  });
+
+  const { data: ticketTypes = [] } = useQuery({
+    queryKey: ["ticket-types-for-attendee", newAttendee.eventoId],
+    queryFn: async () => {
+      if (!newAttendee.eventoId) return [];
+      const { data, error } = await supabase
+        .from('tipos_tickets')
+        .select('id, tipo, precio')
+        .eq('evento_id', newAttendee.eventoId)
+        .order('tipo');
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!newAttendee.eventoId,
   });
 
   const { data: attendees = [], isLoading } = useQuery({
@@ -135,6 +153,17 @@ const Attendees = () => {
   }, {} as Record<string, Attendee[]>);
 
   const handleCreateAttendee = async () => {
+    // Validación de campos obligatorios
+    if (!newAttendee.nombre || !newAttendee.apellido || !newAttendee.email || 
+        !newAttendee.telefono || !newAttendee.eventoId || !newAttendee.tipoTicketId) {
+      toast({
+        title: "Error de validación",
+        description: "Todos los campos marcados con * son obligatorios, incluyendo el evento y tipo de ticket.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Generar código único de ticket
       const ticketCode = `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
@@ -142,16 +171,16 @@ const Attendees = () => {
       const { data, error } = await supabase
         .from("asistentes")
         .insert({
-          nombre: newAttendee.nombre,
-          apellido: newAttendee.apellido,
-          email: newAttendee.email,
-          telefono: newAttendee.telefono,
-          evento_id: null, // Sin evento específico
-          tipo_ticket_id: null, // Sin tipo de ticket específico
+          nombre: newAttendee.nombre.trim(),
+          apellido: newAttendee.apellido.trim(),
+          email: newAttendee.email.trim().toLowerCase(),
+          telefono: newAttendee.telefono.trim(),
+          evento_id: newAttendee.eventoId,
+          tipo_ticket_id: newAttendee.tipoTicketId,
           codigo_ticket: ticketCode,
-          documento_identidad: newAttendee.documentoIdentidad,
+          documento_identidad: newAttendee.documentoIdentidad.trim() || null,
           fecha_nacimiento: newAttendee.fechaNacimiento || null,
-          ciudad: newAttendee.ciudad,
+          ciudad: newAttendee.ciudad.trim() || null,
           estado: "confirmado"
         })
         .select()
@@ -161,7 +190,7 @@ const Attendees = () => {
 
       toast({
         title: "Asistente registrado",
-        description: `${newAttendee.nombre} ha sido registrado exitosamente. Código: ${ticketCode}`,
+        description: `${newAttendee.nombre} ha sido registrado exitosamente para el evento.`,
       });
 
       setIsNewAttendeeOpen(false);
@@ -172,13 +201,15 @@ const Attendees = () => {
         telefono: "",
         documentoIdentidad: "",
         fechaNacimiento: "",
-        ciudad: ""
+        ciudad: "",
+        eventoId: "",
+        tipoTicketId: ""
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating attendee:", error);
       toast({
         title: "Error",
-        description: "No se pudo registrar el asistente. Inténtalo de nuevo.",
+        description: error.message || "No se pudo registrar el asistente. Inténtalo de nuevo.",
         variant: "destructive",
       });
     }
@@ -361,11 +392,53 @@ const Attendees = () => {
                   />
                 </div>
 
+                {/* Información del Evento */}
+                <div className="space-y-2">
+                  <Label htmlFor="evento">Evento *</Label>
+                  <Select 
+                    value={newAttendee.eventoId} 
+                    onValueChange={(value) => setNewAttendee({ ...newAttendee, eventoId: value, tipoTicketId: "" })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un evento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {events.map((event) => (
+                        <SelectItem key={event.id} value={event.id}>
+                          {event.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {newAttendee.eventoId && (
+                  <div className="space-y-2">
+                    <Label htmlFor="tipoTicket">Tipo de Ticket *</Label>
+                    <Select 
+                      value={newAttendee.tipoTicketId} 
+                      onValueChange={(value) => setNewAttendee({ ...newAttendee, tipoTicketId: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un tipo de ticket" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ticketTypes.map((ticket) => (
+                          <SelectItem key={ticket.id} value={ticket.id}>
+                            {ticket.tipo} - ${ticket.precio}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
               </div>
               <DialogFooter>
                 <Button 
                   onClick={handleCreateAttendee}
-                  disabled={!newAttendee.nombre || !newAttendee.apellido || !newAttendee.email || !newAttendee.telefono}
+                  disabled={!newAttendee.nombre || !newAttendee.apellido || !newAttendee.email || 
+                           !newAttendee.telefono || !newAttendee.eventoId || !newAttendee.tipoTicketId}
                 >
                   Registrar Asistente
                 </Button>
