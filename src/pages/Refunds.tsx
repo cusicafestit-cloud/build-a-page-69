@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { DollarSign, Search, CheckCircle, XCircle, Clock } from "lucide-react";
+import { DollarSign, Search, CheckCircle, XCircle, Clock, Eye, Edit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CreateRefundDialog } from "@/components/refunds/CreateRefundDialog";
+import { ViewRefundDialog } from "@/components/refunds/ViewRefundDialog";
+import { EditRefundDialog } from "@/components/refunds/EditRefundDialog";
 
 type Refund = {
   id: string;
@@ -27,6 +29,9 @@ const Refunds = () => {
   const [searchAttendee, setSearchAttendee] = useState("");
   const [searchEvent, setSearchEvent] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedRefund, setSelectedRefund] = useState<any>(null);
 
   const { data: refunds = [], isLoading } = useQuery({
     queryKey: ["refunds", searchAttendee, searchEvent, filterStatus],
@@ -200,12 +205,28 @@ const Refunds = () => {
                       <TableCell>{getStatusBadge(refund.estado)}</TableCell>
                       <TableCell>{new Date(refund.fecha_solicitud).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        {refund.estado === "pendiente" && (
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline">Aprobar</Button>
-                            <Button size="sm" variant="outline">Rechazar</Button>
-                          </div>
-                        )}
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedRefund(refund);
+                              setIsViewDialogOpen(true);
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedRefund(refund);
+                              setIsEditDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -214,6 +235,30 @@ const Refunds = () => {
             </Table>
           </CardContent>
         </Card>
+
+        {/* View Refund Dialog */}
+        {selectedRefund && (
+          <ViewRefundDialog
+            isOpen={isViewDialogOpen}
+            onClose={() => {
+              setIsViewDialogOpen(false);
+              setSelectedRefund(null);
+            }}
+            refund={selectedRefund}
+          />
+        )}
+
+        {/* Edit Refund Dialog */}
+        {selectedRefund && (
+          <EditRefundDialog
+            isOpen={isEditDialogOpen}
+            onClose={() => {
+              setIsEditDialogOpen(false);
+              setSelectedRefund(null);
+            }}
+            refund={selectedRefund}
+          />
+        )}
       </div>
     </Layout>
   );
