@@ -484,6 +484,7 @@ export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) =>
             </div>
             <div className="flex-1 overflow-auto">
               <iframe
+                key={`preview-${template?.id || 'new'}-${formData.contenido_html.substring(0, 50)}`}
                 srcDoc={replaceTemplateVariables(formData.contenido_html)}
                 className="w-full h-full border-0"
                 sandbox="allow-same-origin"
