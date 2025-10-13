@@ -36,7 +36,7 @@ IMPORTANTE:
 - Incluye padding y spacing adecuados
 - Usa fuentes web-safe o fuentes de Google Fonts con fallbacks
 - El diseño debe verse bien en clientes de email como Gmail, Outlook, Apple Mail
-- Si el usuario proporciona una imagen banner, inclúyela en el diseño del email usando base64 embebido
+- Si el usuario menciona un banner o imagen principal, usa EXACTAMENTE este placeholder: src="{{BANNER_IMAGE}}" para la imagen del banner
 
 Variables disponibles que el usuario puede usar:
 - {{nombre}} - Nombre del destinatario
@@ -52,20 +52,6 @@ ${currentHtml ? `\n\nHTML ACTUAL:\n${currentHtml}\n\nModifica o mejora el HTML a
 
 Devuelve SOLO el código HTML, sin explicaciones adicionales.`;
 
-    // Construir el mensaje del usuario
-    const userMessage: any = {
-      role: "user",
-      content: bannerImage 
-        ? [
-            { type: "text", text: prompt },
-            { 
-              type: "image_url", 
-              image_url: { url: bannerImage }
-            }
-          ]
-        : prompt
-    };
-
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -76,7 +62,7 @@ Devuelve SOLO el código HTML, sin explicaciones adicionales.`;
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          userMessage
+          { role: "user", content: prompt }
         ],
       }),
     });
@@ -109,7 +95,17 @@ Devuelve SOLO el código HTML, sin explicaciones adicionales.`;
     }
 
     const data = await response.json();
-    const generatedHtml = data.choices[0].message.content;
+    let generatedHtml = data.choices[0].message.content;
+
+    // Limpiar el HTML si viene envuelto en bloques de código markdown
+    if (generatedHtml.includes("```html")) {
+      generatedHtml = generatedHtml.replace(/```html\n?/g, "").replace(/```\n?/g, "");
+    }
+
+    // Reemplazar el placeholder con la imagen real si se proporcionó
+    if (bannerImage && generatedHtml.includes("{{BANNER_IMAGE}}")) {
+      generatedHtml = generatedHtml.replace(/\{\{BANNER_IMAGE\}\}/g, bannerImage);
+    }
 
     return new Response(
       JSON.stringify({ html: generatedHtml }),
