@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, RefreshCw } from "lucide-react";
+import { Upload, RefreshCw, Eye, Download } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,6 +17,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ValidationPreviewTable } from "./ValidationPreviewTable";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const ImportSection = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -25,6 +33,8 @@ export const ImportSection = () => {
   const [previewData, setPreviewData] = useState<any>(null);
   const [currentQueueId, setCurrentQueueId] = useState<string | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [selectedImport, setSelectedImport] = useState<any>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: importaciones, isLoading } = useQuery({
@@ -198,6 +208,34 @@ export const ImportSection = () => {
     return <Badge className={colors[estado] || "bg-gray-600"}>{estado}</Badge>;
   };
 
+  const handleDownloadFile = async (fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("imports")
+        .download(fileName);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName.split('-').slice(1).join('-'); // Remove timestamp
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Archivo descargado exitosamente");
+    } catch (error: any) {
+      toast.error(`Error al descargar: ${error.message}`);
+    }
+  };
+
+  const handleViewDetails = (imp: any) => {
+    setSelectedImport(imp);
+    setDetailsOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {previewData && (
@@ -314,71 +352,162 @@ export const ImportSection = () => {
         <CardHeader>
           <CardTitle>Historial de Importaciones</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isLoading ? (
-            <div>Cargando...</div>
+            <div className="p-6">Cargando...</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Archivo</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Nuevos</TableHead>
-                  <TableHead>Actualizados</TableHead>
-                  <TableHead>Errores</TableHead>
-                  <TableHead>Campos Detectados</TableHead>
-                  <TableHead>Duración</TableHead>
-                  <TableHead>Fecha</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {importaciones?.map((imp) => (
-                  <TableRow key={imp.id}>
-                    <TableCell className="font-medium">
-                      {imp.archivo_nombre}
-                    </TableCell>
-                    <TableCell>{getEstadoBadge(imp.estado)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-green-500/10">
-                        {imp.registros_nuevos || 0}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-blue-500/10">
-                        {imp.registros_actualizados || 0}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {imp.registros_con_errores > 0 ? (
-                        <Badge variant="destructive">
-                          {imp.registros_con_errores}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-xs text-muted-foreground max-w-xs truncate">
-                        {imp.campos_detectados 
-                          ? Object.keys(imp.campos_detectados).join(", ")
-                          : "-"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {imp.duracion_segundos 
-                        ? `${imp.duracion_segundos}s`
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(imp.created_at).toLocaleString("es-ES")}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">Archivo</TableHead>
+                    <TableHead className="w-[100px]">Estado</TableHead>
+                    <TableHead className="w-[80px] text-center">Nuevos</TableHead>
+                    <TableHead className="w-[100px] text-center">Actualizados</TableHead>
+                    <TableHead className="w-[80px] text-center">Errores</TableHead>
+                    <TableHead className="w-[100px] text-center">Duración</TableHead>
+                    <TableHead className="w-[150px]">Fecha</TableHead>
+                    <TableHead className="w-[120px] text-center">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {importaciones?.map((imp) => (
+                    <TableRow key={imp.id}>
+                      <TableCell className="font-medium truncate max-w-[200px]" title={imp.archivo_nombre}>
+                        {imp.archivo_nombre}
+                      </TableCell>
+                      <TableCell>{getEstadoBadge(imp.estado)}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="bg-green-500/10">
+                          {imp.registros_nuevos || 0}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="bg-blue-500/10">
+                          {imp.registros_actualizados || 0}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {imp.registros_con_errores > 0 ? (
+                          <Badge variant="destructive">
+                            {imp.registros_con_errores}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {imp.duracion_segundos 
+                          ? `${imp.duracion_segundos}s`
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {new Date(imp.created_at).toLocaleString("es-ES")}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewDetails(imp)}
+                            title="Ver detalles"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {imp.archivo_url && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDownloadFile(imp.archivo_url)}
+                              title="Descargar archivo"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Detalles de Importación</DialogTitle>
+            <DialogDescription>
+              Información detallada sobre la importación
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedImport && (
+            <ScrollArea className="h-[60vh] pr-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Archivo</p>
+                    <p className="text-sm font-semibold">{selectedImport.archivo_nombre}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Estado</p>
+                    <div className="mt-1">{getEstadoBadge(selectedImport.estado)}</div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Registros Nuevos</p>
+                    <p className="text-2xl font-bold text-green-600">{selectedImport.registros_nuevos || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Registros Actualizados</p>
+                    <p className="text-2xl font-bold text-blue-600">{selectedImport.registros_actualizados || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Registros con Errores</p>
+                    <p className="text-2xl font-bold text-red-600">{selectedImport.registros_con_errores || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Duración</p>
+                    <p className="text-sm font-semibold">{selectedImport.duracion_segundos ? `${selectedImport.duracion_segundos}s` : "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Fecha</p>
+                    <p className="text-sm font-semibold">{new Date(selectedImport.created_at).toLocaleString("es-ES")}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Progreso</p>
+                    <p className="text-sm font-semibold">{selectedImport.progreso_porcentaje}%</p>
+                  </div>
+                </div>
+
+                {selectedImport.genero_musical_detectado && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Género Musical Detectado</p>
+                    <p className="text-sm font-semibold">{selectedImport.genero_musical_detectado}</p>
+                  </div>
+                )}
+
+                {selectedImport.errores && Array.isArray(selectedImport.errores) && selectedImport.errores.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Errores</p>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {selectedImport.errores.map((error: any, index: number) => (
+                        <div key={index} className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                          <p className="text-sm font-medium">Fila: {error.fila}</p>
+                          <p className="text-sm text-muted-foreground">{error.error}</p>
+                          {error.email && <p className="text-xs text-muted-foreground">Email: {error.email}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
