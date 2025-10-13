@@ -259,24 +259,40 @@ const Attendees = () => {
         attendeeId = data.id;
       }
 
-      // Crear asistencias
-      const asistenciasToCreate = newAttendee.eventosSeleccionados.map(evento => ({
-        asistente_id: attendeeId,
-        evento_id: evento.eventoId,
-        tipo_ticket_id: evento.tipoTicketId,
-        codigo_ticket: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-        estado: 'confirmado'
-      }));
-
-      const { error: asistenciasError } = await supabase
+      // Verificar asistencias existentes
+      const { data: existingAsistencias } = await supabase
         .from('asistencias')
-        .insert(asistenciasToCreate);
+        .select('evento_id, tipo_ticket_id')
+        .eq('asistente_id', attendeeId);
 
-      if (asistenciasError) throw asistenciasError;
+      const existingKeys = new Set(
+        (existingAsistencias || []).map(a => `${a.evento_id}-${a.tipo_ticket_id}`)
+      );
+
+      // Filtrar solo las asistencias nuevas
+      const asistenciasToCreate = newAttendee.eventosSeleccionados
+        .filter(evento => !existingKeys.has(`${evento.eventoId}-${evento.tipoTicketId}`))
+        .map(evento => ({
+          asistente_id: attendeeId,
+          evento_id: evento.eventoId,
+          tipo_ticket_id: evento.tipoTicketId,
+          codigo_ticket: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+          estado: 'confirmado'
+        }));
+
+      if (asistenciasToCreate.length > 0) {
+        const { error: asistenciasError } = await supabase
+          .from('asistencias')
+          .insert(asistenciasToCreate);
+
+        if (asistenciasError) throw asistenciasError;
+      }
+
+      const eventosYaExistentes = newAttendee.eventosSeleccionados.length - asistenciasToCreate.length;
 
       toast({
         title: "Asistente registrado",
-        description: `${newAttendee.nombre} ha sido registrado con ${newAttendee.eventosSeleccionados.length} evento(s).`,
+        description: `${newAttendee.nombre} ha sido registrado con ${asistenciasToCreate.length} evento(s) nuevo(s).${eventosYaExistentes > 0 ? ` (${eventosYaExistentes} ya existían)` : ''}`,
       });
 
       setIsNewAttendeeOpen(false);
