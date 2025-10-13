@@ -3,8 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Eye, Edit, Trash2, Copy, Search, Trash } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, Eye, Edit, Trash2, Copy, Search } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +17,6 @@ export const TemplatesTab = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -69,33 +67,6 @@ export const TemplatesTab = () => {
       toast({
         title: "Error",
         description: error.message || "No se pudo eliminar la plantilla.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Mutation para eliminar todas
-  const deleteAllTemplatesMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from("plantillas_email")
-        .delete()
-        .eq("activa", true);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["email-templates"] });
-      setShowDeleteAllDialog(false);
-      toast({
-        title: "Plantillas eliminadas",
-        description: "Todas las plantillas han sido eliminadas correctamente.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudieron eliminar las plantillas.",
         variant: "destructive",
       });
     },
@@ -182,16 +153,6 @@ export const TemplatesTab = () => {
           </Select>
         </div>
         <div className="flex gap-2 w-full md:w-auto">
-          {filteredTemplates.length > 0 && (
-            <Button 
-              onClick={() => setShowDeleteAllDialog(true)} 
-              variant="destructive"
-              className="w-full md:w-auto"
-            >
-              <Trash className="w-4 h-4 mr-2" />
-              Eliminar Todas
-            </Button>
-          )}
           <Button onClick={handleCreate} className="w-full md:w-auto">
             <Plus className="w-4 h-4 mr-2" />
             Nueva Plantilla
@@ -284,8 +245,9 @@ export const TemplatesTab = () => {
                         }
                       }}
                       title="Eliminar plantilla"
+                      className="hover:bg-destructive hover:text-destructive-foreground"
                     >
-                      <Trash2 className="w-4 h-4 text-destructive" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
@@ -301,28 +263,6 @@ export const TemplatesTab = () => {
         onOpenChange={setIsEditorOpen}
         template={selectedTemplate}
       />
-
-      {/* Delete All Confirmation Dialog */}
-      <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar todas las plantillas?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción eliminará permanentemente todas las plantillas de email marketing ({filteredTemplates.length} plantillas). 
-              Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => deleteAllTemplatesMutation.mutate()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Eliminar Todas
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

@@ -299,17 +299,6 @@ export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) =>
               />
             </div>
 
-            <div>
-              <Label htmlFor="descripcion">Descripción</Label>
-              <Textarea
-                id="descripcion"
-                value={formData.descripcion}
-                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                placeholder="Breve descripción de la plantilla..."
-                rows={2}
-              />
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="categoria">Categoría</Label>
