@@ -142,12 +142,12 @@ serve(async (req) => {
             telefono: extractValue(row, columnMapping.telefono),
             documento_identidad: extractValue(row, columnMapping.documento_identidad),
             genero: extractValue(row, columnMapping.genero),
-            fecha_nacimiento: extractValue(row, columnMapping.fecha_nacimiento),
+            fecha_nacimiento: parseExcelDate(extractValue(row, columnMapping.fecha_nacimiento)),
             direccion: extractValue(row, columnMapping.direccion),
             seccion: extractValue(row, columnMapping.seccion),
             tiketera: extractValue(row, columnMapping.tiketera),
             tipo_ticket_nombre: extractValue(row, columnMapping.tipo_ticket_nombre),
-            fecha_compra: extractValue(row, columnMapping.fecha_compra),
+            fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)),
             updated_at: new Date().toISOString(),
             metadata: metadata
           }
@@ -175,12 +175,12 @@ serve(async (req) => {
             telefono: extractValue(row, columnMapping.telefono),
             documento_identidad: extractValue(row, columnMapping.documento_identidad),
             genero: extractValue(row, columnMapping.genero),
-            fecha_nacimiento: extractValue(row, columnMapping.fecha_nacimiento),
+            fecha_nacimiento: parseExcelDate(extractValue(row, columnMapping.fecha_nacimiento)),
             direccion: extractValue(row, columnMapping.direccion),
             seccion: extractValue(row, columnMapping.seccion),
             tiketera: extractValue(row, columnMapping.tiketera),
             tipo_ticket_nombre: extractValue(row, columnMapping.tipo_ticket_nombre),
-            fecha_compra: extractValue(row, columnMapping.fecha_compra),
+            fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)),
             evento_id: eventoShowsId,
             estado: 'confirmado',
             metadata: metadata
@@ -287,6 +287,41 @@ serve(async (req) => {
 })
 
 // ============= FUNCIONES AUXILIARES =============
+
+// Convertir fecha de formato DD/MM/YYYY o DD/MM/YYYY HH:mm al formato ISO
+function parseExcelDate(dateStr: string | null): string | null {
+  if (!dateStr) return null
+  
+  try {
+    const str = String(dateStr).trim()
+    
+    // Si ya es ISO, devolver tal cual
+    if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
+      return str
+    }
+    
+    // Intentar parsear formato DD/MM/YYYY o DD/MM/YYYY HH:mm
+    const match = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?/)
+    if (match) {
+      const [_, day, month, year, hours, minutes] = match
+      
+      // Construir fecha ISO
+      const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      
+      if (hours && minutes) {
+        return `${isoDate}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`
+      }
+      
+      return isoDate
+    }
+    
+    console.warn(`Formato de fecha no reconocido: ${str}`)
+    return null
+  } catch (e) {
+    console.error(`Error parseando fecha: ${dateStr}`, e)
+    return null
+  }
+}
 
 function detectGeneroMusical(filename: string): string {
   const nombre = filename.toLowerCase()
