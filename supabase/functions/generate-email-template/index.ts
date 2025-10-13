@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, currentHtml } = await req.json();
+    const { prompt, currentHtml, bannerImage } = await req.json();
 
     if (!prompt) {
       return new Response(
@@ -36,6 +36,7 @@ IMPORTANTE:
 - Incluye padding y spacing adecuados
 - Usa fuentes web-safe o fuentes de Google Fonts con fallbacks
 - El diseño debe verse bien en clientes de email como Gmail, Outlook, Apple Mail
+- Si el usuario proporciona una imagen banner, inclúyela en el diseño del email usando base64 embebido
 
 Variables disponibles que el usuario puede usar:
 - {{nombre}} - Nombre del destinatario
@@ -51,6 +52,20 @@ ${currentHtml ? `\n\nHTML ACTUAL:\n${currentHtml}\n\nModifica o mejora el HTML a
 
 Devuelve SOLO el código HTML, sin explicaciones adicionales.`;
 
+    // Construir el mensaje del usuario
+    const userMessage: any = {
+      role: "user",
+      content: bannerImage 
+        ? [
+            { type: "text", text: prompt },
+            { 
+              type: "image_url", 
+              image_url: { url: bannerImage }
+            }
+          ]
+        : prompt
+    };
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -61,7 +76,7 @@ Devuelve SOLO el código HTML, sin explicaciones adicionales.`;
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: prompt }
+          userMessage
         ],
       }),
     });

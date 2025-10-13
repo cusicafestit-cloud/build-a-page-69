@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { FileText, Code, Eye, Sparkles, Loader2 } from "lucide-react";
+import { FileText, Code, Eye, Sparkles, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +44,8 @@ export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) =>
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [bannerImage, setBannerImage] = useState<string | null>(null);
+  const [bannerFileName, setBannerFileName] = useState<string>("");
 
   // Actualizar formulario cuando cambie la plantilla
   useEffect(() => {
@@ -191,6 +193,45 @@ export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) =>
     }
   };
 
+  const handleBannerUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Por favor selecciona un archivo de imagen válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar tamaño (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "La imagen es muy grande. Máximo 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBannerFileName(file.name);
+
+    // Convertir a base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setBannerImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveBanner = () => {
+    setBannerImage(null);
+    setBannerFileName("");
+  };
+
   const handleGenerateWithAI = async () => {
     if (!aiPrompt.trim()) {
       toast({
@@ -207,6 +248,7 @@ export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) =>
         body: {
           prompt: aiPrompt,
           currentHtml: formData.contenido_html !== DEFAULT_HTML_TEMPLATE ? formData.contenido_html : null,
+          bannerImage: bannerImage,
         },
       });
 
@@ -306,10 +348,61 @@ export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) =>
                 Describe el diseño que quieres y la IA generará el código HTML automáticamente
               </p>
               <div className="space-y-3">
+                {/* Banner Upload */}
+                <div>
+                  <Label className="text-sm mb-2">Banner (Opcional)</Label>
+                  {bannerImage ? (
+                    <div className="relative border rounded-lg p-3 bg-background">
+                      <div className="flex items-center gap-3">
+                        <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{bannerFileName}</p>
+                          <p className="text-xs text-muted-foreground">Banner cargado</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRemoveBanner}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <img 
+                        src={bannerImage} 
+                        alt="Banner preview" 
+                        className="mt-2 w-full h-auto rounded border"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBannerUpload}
+                        className="cursor-pointer"
+                        id="banner-upload"
+                      />
+                      <Label
+                        htmlFor="banner-upload"
+                        className="absolute inset-0 flex items-center justify-center bg-muted/50 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/70 transition-colors"
+                      >
+                        <div className="flex flex-col items-center gap-2 pointer-events-none">
+                          <Upload className="w-6 h-6 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Sube un banner</span>
+                        </div>
+                      </Label>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    La IA usará este banner en el diseño del email (máx. 5MB)
+                  </p>
+                </div>
+
                 <Textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder="Ej: Crea un email moderno para confirmar asistencia a un evento de música. Debe tener un header con imagen, sección principal con detalles del evento, y un botón llamativo para descargar el ticket..."
+                  placeholder="Ej: Crea un email moderno para confirmar asistencia a un evento de música. Debe tener un header con el banner, sección principal con detalles del evento, y un botón llamativo para descargar el ticket..."
                   rows={3}
                   className="resize-none"
                 />
