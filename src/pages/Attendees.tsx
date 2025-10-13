@@ -58,7 +58,6 @@ const Attendees = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedAttendee, setSelectedAttendee] = useState<Attendee | null>(null);
   const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
-  const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
   const [bulkAction, setBulkAction] = useState<'exchange' | 'refund' | 'email' | null>(null);
   const [rowsPerPage, setRowsPerPage] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -508,30 +507,21 @@ const Attendees = () => {
       });
       return;
     }
+    
     setBulkAction(action);
-    setIsBulkActionsOpen(true);
-  };
-
-  const executeBulkAction = async () => {
-    if (bulkAction === 'exchange') {
-      setIsBulkActionsOpen(false);
+    
+    if (action === 'exchange') {
       setIsBulkExchangeOpen(true);
-    } else if (bulkAction === 'refund') {
+    } else if (action === 'refund') {
       toast({
         title: "Reembolso masivo",
-        description: `Iniciando reembolso para ${selectedAttendees.length} asistente(s). Esta función abrirá el módulo de reembolsos.`,
+        description: `Esta función abrirá el módulo de reembolsos para ${selectedAttendees.length} asistente(s).`,
       });
-      setIsBulkActionsOpen(false);
-      setBulkAction(null);
-      setSelectedAttendees([]);
-    } else if (bulkAction === 'email') {
+    } else if (action === 'email') {
       toast({
         title: "Email marketing",
-        description: `Preparando envío de email para ${selectedAttendees.length} asistente(s). Esta función abrirá el módulo de email marketing.`,
+        description: `Esta función abrirá el módulo de email marketing para ${selectedAttendees.length} asistente(s).`,
       });
-      setIsBulkActionsOpen(false);
-      setBulkAction(null);
-      setSelectedAttendees([]);
     }
   };
 
