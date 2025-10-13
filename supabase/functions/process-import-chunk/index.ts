@@ -135,6 +135,7 @@ serve(async (req) => {
         if (existing) {
           // ACTUALIZAR TODOS los campos desde el archivo importado
           const updates: any = { 
+            email: emailLower, // Actualizar email
             nombre: nombre, // Siempre actualizar nombre
             updated_at: new Date().toISOString(),
             metadata: metadata
