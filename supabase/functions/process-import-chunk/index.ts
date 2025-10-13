@@ -143,7 +143,6 @@ serve(async (req) => {
           tiketera: extractValue(row, columnMapping.tiketera),
           tipo_ticket_nombre: extractValue(row, columnMapping.tipo_ticket_nombre),
           fecha_compra: parseExcelDate(extractValue(row, columnMapping.fecha_compra)),
-          codigo_ticket: null, // Incluir para que el trigger genere el código automáticamente
           estado: 'confirmado',
           metadata
         }
