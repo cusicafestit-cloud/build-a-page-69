@@ -161,6 +161,10 @@ serve(async (req) => {
         
         const emailLower = email.toLowerCase().trim()
         
+        // Extraer IDs opcionales del archivo
+        const idEventoFromFile = extractValue(row, columnMapping.id_evento)
+        const idTicketFromFile = extractValue(row, columnMapping.id_ticket)
+        
         const metadata = {
           genero_musical: generoMusical,
           show_nombre: extractShowName(job.archivo_nombre),
@@ -187,8 +191,16 @@ serve(async (req) => {
           metadata
         }
         
-        // Solo incluir evento_id si existe
-        if (eventoShowsId) {
+        // Solo incluir evento_id si existe en el archivo O usar el de Shows por defecto
+        if (idEventoFromFile && idEventoFromFile.trim() !== '') {
+          // Validar que sea un UUID válido
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+          if (uuidRegex.test(idEventoFromFile.trim())) {
+            payload.evento_id = idEventoFromFile.trim()
+          } else {
+            console.warn(`⚠️ ID Evento inválido para ${emailLower}: ${idEventoFromFile}`)
+          }
+        } else if (eventoShowsId) {
           payload.evento_id = eventoShowsId
         }
         
@@ -479,6 +491,8 @@ function autoMapColumns(headers: string[]): Record<string, string[]> {
     nombre: ['nombre', 'first name', 'client first name', 'given name', 'primer nombre'],
     apellido: ['apellido', 'last name', 'client last name', 'family name', 'surname'],
     evento_nombre: ['evento', 'nombre evento', 'event', 'event name', 'show', 'concierto', 'espectaculo'],
+    id_evento: ['id evento', 'evento id', 'event id', 'id_evento'],
+    id_ticket: ['id ticket', 'ticket id', 'id_ticket', 'tipo ticket id'],
     documento_identidad: ['document', 'document id', 'documento', 'documento id', 'dni', 'cedula', 'cédula', 'id number', 'identification'],
     fecha_nacimiento: ['birth', 'birth date', 'fecha nacimiento', 'fecha de nacimiento', 'dob', 'birthdate'],
     genero: ['gender', 'sexo', 'género', 'sex'],

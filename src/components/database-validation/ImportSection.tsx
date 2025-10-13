@@ -157,19 +157,28 @@ export const ImportSection = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="file">Archivos Excel (.xlsx)</Label>
-            <p className="text-sm text-muted-foreground">
-              Usa la{" "}
-              <a
-                href="/Plantilla_Importacion.xlsx"
-                download
-                className="text-primary hover:underline font-medium"
-              >
-                plantilla oficial
-              </a>
-              {" "}para importar asistentes.
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-muted-foreground flex-1">
+                Descarga la{" "}
+                <button
+                  onClick={() => {
+                    import('@/utils/generateTemplate').then(({ generateImportTemplate }) => {
+                      generateImportTemplate();
+                      toast.success('Plantilla descargada exitosamente');
+                    });
+                  }}
+                  className="text-primary hover:underline font-medium cursor-pointer"
+                >
+                  plantilla oficial
+                </button>
+                {" "}para importar asistentes.
+              </p>
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              <strong>Columnas obligatorias:</strong> Nombre, Apellido, Nombre Evento, Email
+              <strong>Columnas obligatorias:</strong> Email, Nombre, Apellido, Nombre Evento
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <strong>Columnas opcionales:</strong> ID Evento, ID Ticket (si no se proporcionan, se usa "Shows" por defecto)
             </p>
             <p className="text-xs text-muted-foreground">
               Las validaciones de integridad se ejecutan automáticamente después de la importación.
