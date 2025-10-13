@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useState } from "react";
+import { CampaignDetailsDialog } from "./CampaignDetailsDialog";
 
 type Campaign = {
   id: string;
@@ -33,6 +35,9 @@ type Campaign = {
 };
 
 export const CampaignHistoryTab = () => {
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const { data: campaigns = [], isLoading } = useQuery({
     queryKey: ["campaigns-history"],
     queryFn: async () => {
@@ -173,7 +178,14 @@ export const CampaignHistoryTab = () => {
                 {campaigns.map((campaign) => {
                   const estadoBadge = getEstadoBadge(campaign.estado);
                   return (
-                    <TableRow key={campaign.id}>
+                    <TableRow 
+                      key={campaign.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        setSelectedCampaign(campaign);
+                        setDialogOpen(true);
+                      }}
+                    >
                       <TableCell>
                         <div>
                           <div className="font-medium">{campaign.nombre || campaign.asunto}</div>
@@ -215,6 +227,12 @@ export const CampaignHistoryTab = () => {
           </div>
         </CardContent>
       </Card>
+
+      <CampaignDetailsDialog 
+        campaign={selectedCampaign}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   );
 };
