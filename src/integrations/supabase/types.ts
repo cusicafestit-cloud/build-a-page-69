@@ -1604,10 +1604,6 @@ export type Database = {
         Args: { query_text: string }
         Returns: Json
       }
-      generar_codigo_ticket: {
-        Args: { evento_id: string }
-        Returns: string
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
