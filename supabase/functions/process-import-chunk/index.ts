@@ -151,10 +151,6 @@ serve(async (req) => {
             const doc = extractValue(row, columnMapping.documento_identidad)
             if (doc) updates.documento_identidad = doc
           }
-          if (!existing.ciudad && columnMapping.ciudad) {
-            const ciudad = extractValue(row, columnMapping.ciudad)
-            if (ciudad) updates.ciudad = ciudad
-          }
           if (!existing.genero && columnMapping.genero) {
             const genero = extractValue(row, columnMapping.genero)
             if (genero) updates.genero = genero
@@ -163,9 +159,25 @@ serve(async (req) => {
             const fecha = extractValue(row, columnMapping.fecha_nacimiento)
             if (fecha) updates.fecha_nacimiento = fecha
           }
-          if (!existing.como_se_entero && columnMapping.como_se_entero) {
-            const source = extractValue(row, columnMapping.como_se_entero)
-            if (source) updates.como_se_entero = source
+          if (!existing.direccion && columnMapping.direccion) {
+            const direccion = extractValue(row, columnMapping.direccion)
+            if (direccion) updates.direccion = direccion
+          }
+          if (!existing.seccion && columnMapping.seccion) {
+            const seccion = extractValue(row, columnMapping.seccion)
+            if (seccion) updates.seccion = seccion
+          }
+          if (!existing.tiketera && columnMapping.tiketera) {
+            const tiketera = extractValue(row, columnMapping.tiketera)
+            if (tiketera) updates.tiketera = tiketera
+          }
+          if (!existing.tipo_ticket_nombre && columnMapping.tipo_ticket_nombre) {
+            const tipo = extractValue(row, columnMapping.tipo_ticket_nombre)
+            if (tipo) updates.tipo_ticket_nombre = tipo
+          }
+          if (!existing.fecha_compra && columnMapping.fecha_compra) {
+            const fechaCompra = extractValue(row, columnMapping.fecha_compra)
+            if (fechaCompra) updates.fecha_compra = fechaCompra
           }
           
           if (Object.keys(updates).length > 2) { // más que updated_at y metadata
@@ -183,11 +195,13 @@ serve(async (req) => {
             apellido: extractValue(row, columnMapping.apellido),
             telefono: extractValue(row, columnMapping.telefono),
             documento_identidad: extractValue(row, columnMapping.documento_identidad),
-            ciudad: extractValue(row, columnMapping.ciudad),
             genero: extractValue(row, columnMapping.genero),
             fecha_nacimiento: extractValue(row, columnMapping.fecha_nacimiento),
-            como_se_entero: extractValue(row, columnMapping.como_se_entero),
-            codigo_ticket: generateTicketCode(),
+            direccion: extractValue(row, columnMapping.direccion),
+            seccion: extractValue(row, columnMapping.seccion),
+            tiketera: extractValue(row, columnMapping.tiketera),
+            tipo_ticket_nombre: extractValue(row, columnMapping.tipo_ticket_nombre),
+            fecha_compra: extractValue(row, columnMapping.fecha_compra),
             evento_id: eventoShowsId,
             estado: 'confirmado',
             metadata: metadata
@@ -245,6 +259,28 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', queueId)
+    
+    // 11. Ejecutar validaciones de integridad automáticamente
+    if (errores.length < chunkRows.length) { // Solo si hubo al menos un registro exitoso
+      try {
+        const { data: validaciones } = await supabase
+          .from('validaciones_bd')
+          .select('id')
+          .eq('activa', true)
+          .eq('tipo', 'integridad')
+        
+        if (validaciones && validaciones.length > 0) {
+          // Ejecutar validaciones en paralelo sin esperar
+          for (const val of validaciones) {
+            supabase.functions.invoke('execute-validation-check', {
+              body: { validation_id: val.id }
+            }).catch(err => console.error('Error ejecutando validación:', err))
+          }
+        }
+      } catch (validationError) {
+        console.error('Error al ejecutar validaciones:', validationError)
+      }
+    }
     
     return new Response(JSON.stringify({
       success: true,
@@ -342,16 +378,20 @@ function extractShowName(filename: string): string {
 function autoMapColumns(headers: string[]): Record<string, string[]> {
   const mapping: Record<string, string[]> = {}
   
+  // Mapeo exacto según plantilla proporcionada
   const patterns = {
-    email: ['email', 'correo', 'e-mail', 'mail', 'merge0', 'e mail'],
-    nombre: ['nombre', 'name', 'first', 'fname', 'merge1', 'firstname'],
-    apellido: ['apellido', 'last', 'lname', 'merge2', 'lastname', 'surname'],
-    telefono: ['telefono', 'phone', 'cel', 'celular', 'movil', 'móvil', 'merge4', 'telephone'],
-    documento_identidad: ['cedula', 'cédula', 'ci', 'dni', 'documento', 'id', 'identification'],
-    ciudad: ['ciudad', 'city', 'ubicacion', 'ubicación', 'location', 'lugar'],
-    genero: ['genero', 'género', 'gender', 'sexo', 'sex'],
-    fecha_nacimiento: ['fecha', 'birth', 'birthday', 'nacimiento', 'dob', 'fecha_nac'],
-    como_se_entero: ['como', 'referido', 'source', 'fuente', 'entero', 'enteró']
+    email: ['email'],
+    telefono: ['phone number'],
+    nombre: ['client first name'],
+    documento_identidad: ['document id'],
+    fecha_nacimiento: ['birth date'],
+    genero: ['gender'],
+    apellido: ['client last name'],
+    direccion: ['billing address'],
+    seccion: ['section'],
+    tiketera: ['referrer'],
+    tipo_ticket_nombre: ['section'], // Section también se mapea a tipo_ticket_nombre
+    fecha_compra: ['fecha de compra']
   }
   
   for (const [field, keywords] of Object.entries(patterns)) {

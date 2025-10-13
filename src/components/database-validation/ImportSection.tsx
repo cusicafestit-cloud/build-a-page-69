@@ -131,6 +131,17 @@ export const ImportSection = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="file">Archivos Excel (.xlsx)</Label>
+            <p className="text-sm text-muted-foreground">
+              Usa la{" "}
+              <a
+                href="/Plantilla_Importacion.xlsx"
+                download
+                className="text-primary hover:underline font-medium"
+              >
+                plantilla oficial
+              </a>
+              {" "}para importar asistentes. Las validaciones de integridad se ejecutan automáticamente.
+            </p>
             <Input
               id="file"
               type="file"
