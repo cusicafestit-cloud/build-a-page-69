@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Code, Eye } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { FileText, Code, Eye, Sparkles, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +41,9 @@ export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) =>
     es_predeterminada: false,
     activa: true,
   });
+
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Actualizar formulario cuando cambie la plantilla
   useEffect(() => {
@@ -187,6 +191,49 @@ export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) =>
     }
   };
 
+  const handleGenerateWithAI = async () => {
+    if (!aiPrompt.trim()) {
+      toast({
+        title: "Error",
+        description: "Por favor escribe un prompt para generar el diseño",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-email-template", {
+        body: {
+          prompt: aiPrompt,
+          currentHtml: formData.contenido_html !== DEFAULT_HTML_TEMPLATE ? formData.contenido_html : null,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.html) {
+        setFormData({
+          ...formData,
+          contenido_html: data.html,
+        });
+        toast({
+          title: "Diseño generado",
+          description: "El diseño HTML ha sido generado exitosamente. Revisa la vista previa.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error generating template:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo generar el diseño. Intenta de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
@@ -248,6 +295,44 @@ export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) =>
                 />
               </div>
             </div>
+
+            {/* Sección de IA */}
+            <Card className="p-4 border-2 border-primary/20 bg-primary/5">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <Label className="text-base font-semibold">Generar Diseño con IA</Label>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Describe el diseño que quieres y la IA generará el código HTML automáticamente
+              </p>
+              <div className="space-y-3">
+                <Textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="Ej: Crea un email moderno para confirmar asistencia a un evento de música. Debe tener un header con imagen, sección principal con detalles del evento, y un botón llamativo para descargar el ticket..."
+                  rows={3}
+                  className="resize-none"
+                />
+                <Button
+                  onClick={handleGenerateWithAI}
+                  disabled={isGenerating || !aiPrompt.trim()}
+                  className="w-full"
+                  size="sm"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generando...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generar Diseño
+                    </>
+                  )}
+                </Button>
+              </div>
+            </Card>
 
             {/* Variables disponibles */}
             <div>

@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-campaign-emails]
 verify_jwt = false
+
+[functions.generate-email-template]
+verify_jwt = false
