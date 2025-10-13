@@ -94,8 +94,6 @@ const Settings = () => {
   const saveSettings = async (categoria: string, settings: any) => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
       for (const [key, value] of Object.entries(settings)) {
         const { error } = await supabase
           .from('configuraciones_sistema')
@@ -103,7 +101,7 @@ const Settings = () => {
             clave: key,
             valor: String(value),
             categoria,
-            actualizado_por: user?.id
+            descripcion: `Configuración de ${key}`
           }, {
             onConflict: 'clave'
           });
