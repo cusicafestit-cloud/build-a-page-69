@@ -7,79 +7,62 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserCog, Search, Plus, Shield, User, Crown } from "lucide-react";
+import { UserCog, Search, Plus, Shield, User, Crown, Edit, Trash2, Power } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { EditUserDialog } from "@/components/users/EditUserDialog";
+import { DeleteUserDialog } from "@/components/users/DeleteUserDialog";
 
 type SystemUser = {
   id: string;
-  name: string;
+  nombre: string;
   email: string;
-  role: "admin" | "manager" | "staff";
-  status: "active" | "inactive";
-  lastLogin: string;
-  createdAt: string;
+  rol: "admin" | "manager" | "staff";
+  estado: "activo" | "inactivo";
+  ultimo_login?: string;
+  telefono?: string;
+  created_at: string;
 };
 
 const Users = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewUserOpen, setIsNewUserOpen] = useState(false);
+  const [editUser, setEditUser] = useState<SystemUser | null>(null);
+  const [deleteUser, setDeleteUser] = useState<SystemUser | null>(null);
   const [newUser, setNewUser] = useState<{
-    name: string;
+    nombre: string;
     email: string;
-    role: "admin" | "manager" | "staff";
+    rol: "admin" | "manager" | "staff";
     password: string;
+    telefono: string;
   }>({
-    name: "",
+    nombre: "",
     email: "",
-    role: "staff",
-    password: ""
+    rol: "staff",
+    password: "",
+    telefono: ""
   });
 
-  const mockUsers: SystemUser[] = [
-    {
-      id: "1",
-      name: "Admin Principal",
-      email: "admin@cusica.com",
-      role: "admin",
-      status: "active",
-      lastLogin: "2025-01-18T10:30:00Z",
-      createdAt: "2024-01-01"
+  const { data: users = [], isLoading, refetch } = useQuery({
+    queryKey: ["system-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("usuarios_sistema")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return (data || []) as SystemUser[];
     },
-    {
-      id: "2",
-      name: "María González",
-      email: "maria.manager@cusica.com",
-      role: "manager",
-      status: "active",
-      lastLogin: "2025-01-17T15:45:00Z",
-      createdAt: "2024-06-15"
-    },
-    {
-      id: "3",
-      name: "Carlos Staff",
-      email: "carlos.staff@cusica.com",
-      role: "staff",
-      status: "active",
-      lastLogin: "2025-01-16T09:20:00Z",
-      createdAt: "2024-09-10"
-    },
-    {
-      id: "4",
-      name: "Ana Pérez",
-      email: "ana.staff@cusica.com",
-      role: "staff",
-      status: "inactive",
-      lastLogin: "2025-01-10T14:15:00Z",
-      createdAt: "2024-11-01"
-    }
-  ];
+  });
 
-  const filteredUsers = mockUsers.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredUsers = users.filter(user =>
+    user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
+    user.rol.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getRoleBadge = (role: string) => {
@@ -101,25 +84,75 @@ const Users = () => {
       : <Badge variant="secondary">Inactivo</Badge>;
   };
 
-  const handleCreateUser = () => {
-    toast({
-      title: "Usuario creado",
-      description: `El usuario ${newUser.name} ha sido creado exitosamente.`,
-    });
-    setIsNewUserOpen(false);
-    setNewUser({
-      name: "",
-      email: "",
-      role: "staff",
-      password: ""
-    });
+  const handleCreateUser = async () => {
+    try {
+      const { error } = await supabase
+        .from("usuarios_sistema")
+        .insert({
+          nombre: newUser.nombre,
+          email: newUser.email,
+          rol: newUser.rol,
+          password_hash: newUser.password, // En producción, esto debería hashearse
+          telefono: newUser.telefono || null,
+          estado: "activo"
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Usuario creado",
+        description: `El usuario ${newUser.nombre} ha sido creado exitosamente.`,
+      });
+      
+      refetch();
+      setIsNewUserOpen(false);
+      setNewUser({
+        nombre: "",
+        email: "",
+        rol: "staff",
+        password: "",
+        telefono: ""
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el usuario",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleToggleStatus = async (user: SystemUser) => {
+    const newStatus = user.estado === "activo" ? "inactivo" : "activo";
+    
+    try {
+      const { error } = await supabase
+        .from("usuarios_sistema")
+        .update({ estado: newStatus })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Estado actualizado",
+        description: `El usuario ${user.nombre} ahora está ${newStatus}`,
+      });
+      
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el estado",
+        variant: "destructive"
+      });
+    }
   };
 
   const stats = [
-    { title: "Total Usuarios", value: mockUsers.length.toString(), icon: UserCog },
-    { title: "Administradores", value: mockUsers.filter(u => u.role === "admin").length.toString(), icon: Crown },
-    { title: "Managers", value: mockUsers.filter(u => u.role === "manager").length.toString(), icon: Shield },
-    { title: "Staff", value: mockUsers.filter(u => u.role === "staff").length.toString(), icon: User },
+    { title: "Total Usuarios", value: users.length.toString(), icon: UserCog },
+    { title: "Administradores", value: users.filter(u => u.rol === "admin").length.toString(), icon: Crown },
+    { title: "Managers", value: users.filter(u => u.rol === "manager").length.toString(), icon: Shield },
+    { title: "Staff", value: users.filter(u => u.rol === "staff").length.toString(), icon: User },
   ];
 
   return (
@@ -154,9 +187,9 @@ const Users = () => {
                     Nombre
                   </Label>
                   <Input
-                    id="name"
-                    value={newUser.name}
-                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                    id="nombre"
+                    value={newUser.nombre}
+                    onChange={(e) => setNewUser({ ...newUser, nombre: e.target.value })}
                     className="col-span-3"
                   />
                 </div>
@@ -173,12 +206,23 @@ const Users = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="role" className="text-right">
+                  <Label htmlFor="telefono" className="text-right">
+                    Teléfono
+                  </Label>
+                  <Input
+                    id="telefono"
+                    value={newUser.telefono}
+                    onChange={(e) => setNewUser({ ...newUser, telefono: e.target.value })}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="rol" className="text-right">
                     Rol
                   </Label>
-                  <Select onValueChange={(value: "admin" | "manager" | "staff") => setNewUser({ ...newUser, role: value })}>
+                  <Select value={newUser.rol} onValueChange={(value: "admin" | "manager" | "staff") => setNewUser({ ...newUser, rol: value })}>
                     <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Seleccionar rol" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="staff">Staff</SelectItem>
@@ -259,7 +303,14 @@ const Users = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.length === 0 ? (
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                        <div className="text-muted-foreground">Cargando usuarios...</div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredUsers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8">
                         <div className="text-muted-foreground">
@@ -275,24 +326,49 @@ const Users = () => {
                       <TableRow key={user.id}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{user.name}</div>
+                            <div className="font-medium">{user.nombre}</div>
                             <div className="text-sm text-muted-foreground">{user.email}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{getRoleBadge(user.role)}</TableCell>
-                        <TableCell>{getStatusBadge(user.status)}</TableCell>
+                        <TableCell>{getRoleBadge(user.rol)}</TableCell>
+                        <TableCell>{getStatusBadge(user.estado)}</TableCell>
                         <TableCell>
-                          {new Date(user.lastLogin).toLocaleDateString()}
+                          {user.ultimo_login 
+                            ? new Date(user.ultimo_login).toLocaleDateString()
+                            : "Nunca"
+                          }
                         </TableCell>
                         <TableCell>
-                          {new Date(user.createdAt).toLocaleDateString()}
+                          {new Date(user.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline">Editar</Button>
-                            {user.role !== "admin" && (
-                              <Button size="sm" variant="outline">
-                                {user.status === "active" ? "Desactivar" : "Activar"}
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => setEditUser(user)}
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Editar
+                            </Button>
+                            {user.rol !== "admin" && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleToggleStatus(user)}
+                              >
+                                <Power className="w-4 h-4 mr-1" />
+                                {user.estado === "activo" ? "Desactivar" : "Activar"}
+                              </Button>
+                            )}
+                            {user.rol !== "admin" && (
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                onClick={() => setDeleteUser(user)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-1" />
+                                Eliminar
                               </Button>
                             )}
                           </div>
@@ -305,6 +381,20 @@ const Users = () => {
             </div>
           </CardContent>
         </Card>
+
+        <EditUserDialog 
+          user={editUser}
+          open={!!editUser}
+          onOpenChange={(open) => !open && setEditUser(null)}
+          onSuccess={refetch}
+        />
+
+        <DeleteUserDialog 
+          user={deleteUser}
+          open={!!deleteUser}
+          onOpenChange={(open) => !open && setDeleteUser(null)}
+          onSuccess={refetch}
+        />
       </div>
     </Layout>
   );
