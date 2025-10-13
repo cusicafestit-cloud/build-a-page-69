@@ -476,7 +476,7 @@ const Exchanges = () => {
             tipo_ticket_original_id: ticketType.id,
             cantidad: ticketType.cantidad,
             motivo: newExchange.reason || null,
-            estado: 'disponible',
+            estado: 'pendiente',
             diferencia_precio: 0,
             fecha_solicitud: new Date().toISOString(),
             evento_tp_id: eventInfo?.tp_id || null,
@@ -1072,7 +1072,9 @@ const Exchanges = () => {
                   <option value="pending">Pendientes</option>
                   <option value="approved">Aprobados</option>
                   <option value="rejected">Rechazados</option>
-                  <option value="completed">Completados</option>
+                  <option value="canjeado">Canjeados</option>
+                  <option value="disponible">Disponibles</option>
+                  <option value="esperando_tp">Esperando TP</option>
                 </select>
               </div>
             </div>
