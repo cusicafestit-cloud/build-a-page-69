@@ -62,6 +62,12 @@ const Attendees = () => {
   const [bulkAction, setBulkAction] = useState<'exchange' | 'refund' | 'email' | null>(null);
   const [rowsPerPage, setRowsPerPage] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [isBulkExchangeOpen, setIsBulkExchangeOpen] = useState(false);
+  const [bulkExchangeData, setBulkExchangeData] = useState({
+    nuevoEventoId: "",
+    nuevoTipoTicketId: "",
+    motivo: ""
+  });
   
   const [newAttendee, setNewAttendee] = useState({
     nombre: "",
@@ -507,31 +513,116 @@ const Attendees = () => {
   };
 
   const executeBulkAction = async () => {
-    const selectedAttendeesData = filteredAttendees.filter(a => selectedAttendees.includes(a.id));
-    
     if (bulkAction === 'exchange') {
-      toast({
-        title: "Canje masivo",
-        description: `Iniciando canje para ${selectedAttendees.length} asistente(s). Esta función abrirá el módulo de canjes.`,
-      });
-      // Aquí se podría redirigir a /exchanges con los asistentes preseleccionados
+      setIsBulkActionsOpen(false);
+      setIsBulkExchangeOpen(true);
     } else if (bulkAction === 'refund') {
       toast({
         title: "Reembolso masivo",
         description: `Iniciando reembolso para ${selectedAttendees.length} asistente(s). Esta función abrirá el módulo de reembolsos.`,
       });
-      // Aquí se podría redirigir a /refunds con los asistentes preseleccionados
+      setIsBulkActionsOpen(false);
+      setBulkAction(null);
+      setSelectedAttendees([]);
     } else if (bulkAction === 'email') {
       toast({
         title: "Email marketing",
         description: `Preparando envío de email para ${selectedAttendees.length} asistente(s). Esta función abrirá el módulo de email marketing.`,
       });
-      // Aquí se podría redirigir a /email-marketing con los asistentes preseleccionados
+      setIsBulkActionsOpen(false);
+      setBulkAction(null);
+      setSelectedAttendees([]);
     }
-    
-    setIsBulkActionsOpen(false);
-    setBulkAction(null);
-    setSelectedAttendees([]);
+  };
+
+  const handleBulkExchange = async () => {
+    if (!bulkExchangeData.nuevoEventoId || !bulkExchangeData.nuevoTipoTicketId) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar un evento y tipo de ticket destino.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const selectedAttendeesData = attendees.filter(a => selectedAttendees.includes(a.id));
+      
+      // Obtener info del evento nuevo
+      const { data: nuevoEvento } = await supabase
+        .from('eventos')
+        .select('nombre, tp_id')
+        .eq('id', bulkExchangeData.nuevoEventoId)
+        .single();
+
+      const { data: nuevoTipoTicket } = await supabase
+        .from('tipos_tickets')
+        .select('tipo, tp_id')
+        .eq('id', bulkExchangeData.nuevoTipoTicketId)
+        .single();
+
+      const canjesCreados = [];
+      
+      for (const asistente of selectedAttendeesData) {
+        // Tomar la primera asistencia como evento original
+        if (asistente.asistencias.length > 0) {
+          const primeraAsistencia = asistente.asistencias[0];
+          
+          const canje = {
+            asistente_id: asistente.id,
+            nombre_asistente: asistente.nombre,
+            apellido_asistente: asistente.apellido,
+            correo: asistente.email,
+            evento_original_id: primeraAsistencia.eventoId,
+            tipo_ticket_original_id: primeraAsistencia.tipoTicketId,
+            evento_tp_id: nuevoEvento?.tp_id || null,
+            ticket_tp_id: nuevoTipoTicket?.tp_id || null,
+            motivo: bulkExchangeData.motivo || 'Canje masivo desde gestión de asistentes',
+            estado: 'pendiente',
+            diferencia_precio: 0,
+            cantidad: 1
+          };
+          
+          canjesCreados.push(canje);
+        }
+      }
+
+      if (canjesCreados.length === 0) {
+        toast({
+          title: "Error",
+          description: "No se pudieron crear canjes para los asistentes seleccionados.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('canjes')
+        .insert(canjesCreados);
+
+      if (error) throw error;
+
+      toast({
+        title: "Canjes creados",
+        description: `Se crearon ${canjesCreados.length} solicitudes de canje exitosamente.`,
+      });
+
+      setIsBulkExchangeOpen(false);
+      setBulkExchangeData({
+        nuevoEventoId: "",
+        nuevoTipoTicketId: "",
+        motivo: ""
+      });
+      setSelectedAttendees([]);
+      setBulkAction(null);
+    } catch (error: any) {
+      console.error("Error creating bulk exchanges:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron crear los canjes masivos.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleExportAttendees = () => {
@@ -1172,6 +1263,115 @@ const Attendees = () => {
                 disabled={!editAttendee.nombre || !editAttendee.apellido || !editAttendee.telefono}
               >
                 Actualizar Asistente
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Exchange Dialog */}
+        <Dialog open={isBulkExchangeOpen} onOpenChange={setIsBulkExchangeOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Canje Masivo de Tickets</DialogTitle>
+              <DialogDescription>
+                Crea solicitudes de canje para {selectedAttendees.length} asistente(s) seleccionado(s)
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Asistentes Seleccionados</Label>
+                <div className="border rounded-lg p-3 max-h-32 overflow-y-auto">
+                  {attendees
+                    .filter(a => selectedAttendees.includes(a.id))
+                    .map(a => (
+                      <div key={a.id} className="text-sm py-1">
+                        {a.nombre} {a.apellido} - {a.email}
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bulk-nuevo-evento">Evento Destino *</Label>
+                <Select
+                  value={bulkExchangeData.nuevoEventoId}
+                  onValueChange={(value) => {
+                    setBulkExchangeData({
+                      ...bulkExchangeData,
+                      nuevoEventoId: value,
+                      nuevoTipoTicketId: "" // Reset tipo ticket cuando cambia evento
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona el evento destino" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {events.map((event) => (
+                      <SelectItem key={event.id} value={event.id}>
+                        {event.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {bulkExchangeData.nuevoEventoId && (
+                <div className="space-y-2">
+                  <Label htmlFor="bulk-nuevo-ticket">Tipo de Ticket Destino *</Label>
+                  <Select
+                    value={bulkExchangeData.nuevoTipoTicketId}
+                    onValueChange={(value) =>
+                      setBulkExchangeData({ ...bulkExchangeData, nuevoTipoTicketId: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona el tipo de ticket" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allTicketTypes
+                        .filter((tt: any) => tt.eventoId === bulkExchangeData.nuevoEventoId)
+                        .map((tt: any) => (
+                          <SelectItem key={tt.id} value={tt.id}>
+                            {tt.tipo} - ${tt.precio}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="bulk-motivo">Motivo del Canje</Label>
+                <Input
+                  id="bulk-motivo"
+                  value={bulkExchangeData.motivo}
+                  onChange={(e) =>
+                    setBulkExchangeData({ ...bulkExchangeData, motivo: e.target.value })
+                  }
+                  placeholder="Ejemplo: Cambio de fecha del evento"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsBulkExchangeOpen(false);
+                  setBulkExchangeData({
+                    nuevoEventoId: "",
+                    nuevoTipoTicketId: "",
+                    motivo: ""
+                  });
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleBulkExchange}
+                disabled={!bulkExchangeData.nuevoEventoId || !bulkExchangeData.nuevoTipoTicketId}
+              >
+                Crear {selectedAttendees.length} Canje(s)
               </Button>
             </DialogFooter>
           </DialogContent>
