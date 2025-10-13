@@ -19,9 +19,10 @@ type AttendeeData = Tables<'asistentes'>;
 type CanjeData = Tables<'canjes'>;
 type EventData = Tables<'eventos'>;
 type TicketTypeData = Tables<'tipos_tickets'>;
-
 const TicketExchange = () => {
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [step, setStep] = useState<'email' | 'loading' | 'canjes' | 'confirming' | 'success' | 'error'>('email');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,42 +38,38 @@ const TicketExchange = () => {
   const launchConfetti = () => {
     const count = 200;
     const defaults = {
-      origin: { y: 0.7 },
+      origin: {
+        y: 0.7
+      }
     };
-
     function fire(particleRatio: number, opts: any) {
       confetti({
         ...defaults,
         ...opts,
-        particleCount: Math.floor(count * particleRatio),
+        particleCount: Math.floor(count * particleRatio)
       });
     }
-
     fire(0.25, {
       spread: 26,
-      startVelocity: 55,
+      startVelocity: 55
     });
-
     fire(0.2, {
-      spread: 60,
+      spread: 60
     });
-
     fire(0.35, {
       spread: 100,
       decay: 0.91,
-      scalar: 0.8,
+      scalar: 0.8
     });
-
     fire(0.1, {
       spread: 120,
       startVelocity: 25,
       decay: 0.92,
-      scalar: 1.2,
+      scalar: 1.2
     });
-
     fire(0.1, {
       spread: 120,
-      startVelocity: 45,
+      startVelocity: 45
     });
   };
 
@@ -82,46 +79,39 @@ const TicketExchange = () => {
       toast({
         title: "Email requerido",
         description: "Por favor ingresa tu correo electrónico",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setLoading(true);
     setStep('loading');
-
     try {
       // Buscar asistente por email
-      const { data: attendee, error: attendeeError } = await supabase
-        .from('asistentes')
-        .select('*')
-        .eq('email', email.trim())
-        .single();
-
+      const {
+        data: attendee,
+        error: attendeeError
+      } = await supabase.from('asistentes').select('*').eq('email', email.trim()).single();
       if (attendeeError || !attendee) {
         setStep('error');
         toast({
           title: "Email no encontrado",
           description: "No encontramos ningún registro con este correo electrónico",
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
-
       setAttendeeData(attendee);
 
       // Buscar canjes disponibles para este asistente
       // Solo mostrar canjes donde ambos eventos tengan canjes habilitados
-      const { data: canjes, error: canjesError } = await supabase
-        .from('canjes')
-        .select(`
+      const {
+        data: canjes,
+        error: canjesError
+      } = await supabase.from('canjes').select(`
           *,
           evento_original:eventos!evento_original_id(*),
           tipo_ticket_original:tipos_tickets!tipo_ticket_original_id(*)
-        `)
-        .eq('asistente_id', attendee.id)
-        .eq('estado', 'disponible');
-
+        `).eq('asistente_id', attendee.id).eq('estado', 'disponible');
       if (canjesError) {
         console.error('Error fetching canjes:', canjesError);
         setStep('error');
@@ -131,14 +121,11 @@ const TicketExchange = () => {
       // Validar límite máximo de canjes por tipo de ticket
       const canjesValidados = [];
       const canjesRechazados = [];
-
-      for (const canje of (canjes || [])) {
+      for (const canje of canjes || []) {
         const eventoOriginalHabilitado = canje.evento_original?.canjes_habilitados === true;
-        
         if (!eventoOriginalHabilitado) {
           continue; // Saltar canjes de eventos sin canjes habilitados
         }
-
         const tipoTicket = canje.tipo_ticket_original;
         const maximoCanjes = tipoTicket?.maximo_canjes || 0;
 
@@ -149,12 +136,13 @@ const TicketExchange = () => {
         }
 
         // Contar cuántos canjes ya se han procesado para este tipo de ticket
-        const { count: canjesUsados, error: countError } = await supabase
-          .from('canjes')
-          .select('*', { count: 'exact', head: true })
-          .eq('tipo_ticket_original_id', canje.tipo_ticket_original_id)
-          .eq('estado', 'canjeado');
-
+        const {
+          count: canjesUsados,
+          error: countError
+        } = await supabase.from('canjes').select('*', {
+          count: 'exact',
+          head: true
+        }).eq('tipo_ticket_original_id', canje.tipo_ticket_original_id).eq('estado', 'canjeado');
         if (countError) {
           console.error('Error counting canjes:', countError);
           continue;
@@ -173,39 +161,32 @@ const TicketExchange = () => {
 
       // Si hay canjes rechazados, mostrar mensaje de advertencia
       if (canjesRechazados.length > 0) {
-        const mensajes = canjesRechazados.map((c: any) => 
-          `${c.tipo_ticket_original?.tipo}: ${c.razon}`
-        ).join('\n');
-        
+        const mensajes = canjesRechazados.map((c: any) => `${c.tipo_ticket_original?.tipo}: ${c.razon}`).join('\n');
         toast({
           title: "Algunos canjes no están disponibles",
           description: mensajes,
-          variant: "destructive",
+          variant: "destructive"
         });
       }
-
       const canjesHabilitados = canjesValidados;
-
       if (canjesHabilitados.length === 0) {
         setStep('error');
         toast({
           title: "Sin canjes disponibles",
           description: "No tienes canjes disponibles en este momento. Los eventos deben tener canjes habilitados.",
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
-
       setAvailableCanjes(canjesHabilitados);
       setStep('canjes');
-
     } catch (error) {
       console.error('Error:', error);
       setStep('error');
       toast({
         title: "Error",
         description: "Ocurrió un error al procesar tu solicitud",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -215,12 +196,10 @@ const TicketExchange = () => {
   // Confirmar todos los canjes
   const handleConfirmAllCanjes = async () => {
     setConfirming(true);
-
     try {
       // Validar nuevamente los límites antes de procesar
       const canjesAValidar = [];
       const canjesRechazados = [];
-
       for (const canje of availableCanjes) {
         const tipoTicket = (canje as any).tipo_ticket_original;
         const maximoCanjes = tipoTicket?.maximo_canjes || 0;
@@ -232,12 +211,13 @@ const TicketExchange = () => {
         }
 
         // Contar cuántos canjes ya se han procesado para este tipo de ticket
-        const { count: canjesUsados, error: countError } = await supabase
-          .from('canjes')
-          .select('*', { count: 'exact', head: true })
-          .eq('tipo_ticket_original_id', (canje as any).tipo_ticket_original_id)
-          .eq('estado', 'canjeado');
-
+        const {
+          count: canjesUsados,
+          error: countError
+        } = await supabase.from('canjes').select('*', {
+          count: 'exact',
+          head: true
+        }).eq('tipo_ticket_original_id', (canje as any).tipo_ticket_original_id).eq('estado', 'canjeado');
         if (countError) {
           console.error('Error counting canjes:', countError);
           canjesRechazados.push(canje);
@@ -250,18 +230,17 @@ const TicketExchange = () => {
           toast({
             title: "Límite alcanzado",
             description: `El tipo de ticket "${tipoTicket?.tipo}" ha alcanzado el límite máximo de ${maximoCanjes} canje(s)`,
-            variant: "destructive",
+            variant: "destructive"
           });
         } else {
           canjesAValidar.push(canje);
         }
       }
-
       if (canjesRechazados.length > 0 && canjesAValidar.length === 0) {
         toast({
           title: "No se pueden procesar los canjes",
           description: "Todos los canjes han alcanzado su límite máximo",
-          variant: "destructive",
+          variant: "destructive"
         });
         setConfirming(false);
         return;
@@ -269,24 +248,21 @@ const TicketExchange = () => {
 
       // Guardar información de los canjes antes de actualizarlos
       setProcessedCanjes(canjesAValidar);
-      
+
       // Actualizar estado de los canjes validados a "canjeado"
       const canjeIds = canjesAValidar.map(canje => canje.id);
-      
-      const { error } = await supabase
-        .from('canjes')
-        .update({
-          estado: 'canjeado',
-          fecha_procesado: new Date().toISOString(),
-        })
-        .in('id', canjeIds);
-
+      const {
+        error
+      } = await supabase.from('canjes').update({
+        estado: 'canjeado',
+        fecha_procesado: new Date().toISOString()
+      }).in('id', canjeIds);
       if (error) {
         console.error('Error updating canjes:', error);
         toast({
           title: "Error",
           description: "No se pudo procesar los canjes",
-          variant: "destructive",
+          variant: "destructive"
         });
         setConfirming(false);
         return;
@@ -298,18 +274,15 @@ const TicketExchange = () => {
         setStep('success');
         toast({
           title: "¡Canjes exitosos!",
-          description: canjesAValidar.length === availableCanjes.length 
-            ? "Tus solicitudes de canje han sido procesadas correctamente"
-            : `Se procesaron ${canjesAValidar.length} de ${availableCanjes.length} canjes exitosamente`,
+          description: canjesAValidar.length === availableCanjes.length ? "Tus solicitudes de canje han sido procesadas correctamente" : `Se procesaron ${canjesAValidar.length} de ${availableCanjes.length} canjes exitosamente`
         });
       }, 1000);
-
     } catch (error) {
       console.error('Error:', error);
       toast({
         title: "Error",
         description: "Ocurrió un error al procesar los canjes",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setConfirming(false);
@@ -326,9 +299,7 @@ const TicketExchange = () => {
     setTicketTypeData(null);
     setSelectedCanje(null);
   };
-
-  return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
+  return <div className="min-h-screen bg-black relative overflow-hidden">
       {/* Fondo animado P5.js */}
       <P5Background />
       
@@ -347,8 +318,7 @@ const TicketExchange = () => {
           </div>
 
           {/* Paso 1: Ingreso de email */}
-          {step === 'email' && (
-            <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+          {step === 'email' && <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
               <CardContent className="p-8">
                 <div className="text-center mb-6">
                   <Mail className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -364,25 +334,11 @@ const TicketExchange = () => {
                     <Label htmlFor="email" className="text-gray-700 font-medium">
                       Correo Electrónico
                     </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="Ingresa el e-mail con el que compraste tu entrada"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="mt-2 bg-yellow-50 border-yellow-200 focus:border-yellow-400 focus:ring-yellow-400/20"
-                      onKeyPress={(e) => e.key === 'Enter' && handleEmailSubmit()}
-                    />
+                    <Input id="email" type="email" placeholder="Ingresa el e-mail con el que compraste tu entrada" value={email} onChange={e => setEmail(e.target.value)} className="mt-2 bg-yellow-50 border-yellow-200 focus:border-yellow-400 focus:ring-yellow-400/20" onKeyPress={e => e.key === 'Enter' && handleEmailSubmit()} />
                   </div>
 
                   <div className="flex items-start space-x-2 text-xs text-gray-500">
-                    <input 
-                      type="checkbox" 
-                      id="terms-checkbox"
-                      className="mt-0.5" 
-                      defaultChecked 
-                      title="Acepto términos y condiciones"
-                    />
+                    <input type="checkbox" id="terms-checkbox" className="mt-0.5" defaultChecked title="Acepto términos y condiciones" />
                     <label htmlFor="terms-checkbox">
                       Acepto los{" "}
                       <span className="text-red-500 underline cursor-pointer">
@@ -392,21 +348,15 @@ const TicketExchange = () => {
                     </label>
                   </div>
 
-                  <Button
-                    onClick={handleEmailSubmit}
-                    disabled={!email.trim()}
-                    className="w-full bg-red-300 hover:bg-red-400 text-gray-800 font-medium py-3 rounded-lg transition-all duration-200"
-                  >
+                  <Button onClick={handleEmailSubmit} disabled={!email.trim()} className="w-full bg-red-300 hover:bg-red-400 text-gray-800 font-medium py-3 rounded-lg transition-all duration-200">
                     Continuar
                   </Button>
                 </div>
               </CardContent>
-            </Card>
-          )}
+            </Card>}
 
           {/* Paso 2: Cargando */}
-          {step === 'loading' && (
-            <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+          {step === 'loading' && <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
               <CardContent className="p-8">
                 <div className="text-center mb-6">
                   <Loader2 className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-spin" />
@@ -433,12 +383,10 @@ const TicketExchange = () => {
                 {/* Skeleton de lista de canjes */}
                 <ListSkeleton items={3} />
               </CardContent>
-            </Card>
-          )}
+            </Card>}
 
           {/* Paso 3: Mostrar canjes disponibles */}
-          {step === 'canjes' && (
-            <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+          {step === 'canjes' && <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-gray-800">
                   <Ticket className="w-5 h-5" />
@@ -462,8 +410,7 @@ const TicketExchange = () => {
                   </div>
 
                   {/* Lista de canjes */}
-                  {availableCanjes.map((canje: any) => (
-                    <div key={canje.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  {availableCanjes.map((canje: any) => <div key={canje.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-500" />
@@ -485,39 +432,26 @@ const TicketExchange = () => {
                           </Badge>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    </div>)}
 
                   {/* Botón para confirmar todos */}
-                  <Button
-                    onClick={() => handleConfirmAllCanjes()}
-                    disabled={confirming}
-                    className="w-full bg-green-500 hover:bg-green-600 text-white mt-4"
-                  >
-                    {confirming ? (
-                      <>
+                  <Button onClick={() => handleConfirmAllCanjes()} disabled={confirming} className="w-full bg-green-500 hover:bg-green-600 text-white mt-4">
+                    {confirming ? <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Procesando...
-                      </>
-                    ) : (
-                      'Confirmar Todos los Canjes'
-                    )}
+                      </> : 'Confirmar Todos los Canjes'}
                   </Button>
                 </div>
               </CardContent>
-            </Card>
-          )}
+            </Card>}
 
           {/* Paso 4: Éxito */}
-          {step === 'success' && (
-            <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+          {step === 'success' && <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
               <CardContent className="p-8 text-center">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <CheckCircle2 className="w-8 h-8 text-green-600" />
                 </div>
-                <h3 className="text-xl font-medium text-gray-800 mb-4">
-                  ¡Canje Exitoso!
-                </h3>
+                <h3 className="text-xl font-medium text-gray-800 mb-4">¡Solicitud de Canje Recibida!</h3>
                 <p className="text-gray-600 text-sm mb-6 leading-relaxed">
                   Tu solicitud de canje ha sido procesada exitosamente. 
                   <strong> Te enviaremos un correo electrónico con toda la información de tu canje.</strong>
@@ -528,42 +462,37 @@ const TicketExchange = () => {
                   
                   {/* Agrupar canjes por evento */}
                   {processedCanjes.reduce((acc: any[], canje: any) => {
-                    const eventoNombre = canje.evento_original?.nombre || 'Sin evento';
-                    const existing = acc.find(item => item.evento === eventoNombre);
-                    
-                    if (existing) {
-                      existing.tickets.push({
-                        tipo: canje.tipo_ticket_original?.tipo || 'Sin tipo',
-                        cantidad: canje.cantidad || 1
-                      });
-                    } else {
-                      acc.push({
-                        evento: eventoNombre,
-                        tickets: [{
-                          tipo: canje.tipo_ticket_original?.tipo || 'Sin tipo',
-                          cantidad: canje.cantidad || 1
-                        }]
-                      });
-                    }
-                    return acc;
-                  }, []).map((grupo: any, index: number) => (
-                    <div key={index} className="mb-4 last:mb-0">
+                const eventoNombre = canje.evento_original?.nombre || 'Sin evento';
+                const existing = acc.find(item => item.evento === eventoNombre);
+                if (existing) {
+                  existing.tickets.push({
+                    tipo: canje.tipo_ticket_original?.tipo || 'Sin tipo',
+                    cantidad: canje.cantidad || 1
+                  });
+                } else {
+                  acc.push({
+                    evento: eventoNombre,
+                    tickets: [{
+                      tipo: canje.tipo_ticket_original?.tipo || 'Sin tipo',
+                      cantidad: canje.cantidad || 1
+                    }]
+                  });
+                }
+                return acc;
+              }, []).map((grupo: any, index: number) => <div key={index} className="mb-4 last:mb-0">
                       <div className="flex items-center gap-2 mb-2">
                         <Calendar className="w-4 h-4 text-gray-500" />
                         <p className="font-semibold text-gray-700">{grupo.evento}</p>
                       </div>
                       <div className="ml-6 space-y-1">
-                        {grupo.tickets.map((ticket: any, ticketIndex: number) => (
-                          <div key={ticketIndex} className="flex items-center justify-between text-sm">
+                        {grupo.tickets.map((ticket: any, ticketIndex: number) => <div key={ticketIndex} className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">• {ticket.tipo}</span>
                             <Badge variant="secondary" className="text-xs">
                               {ticket.cantidad} ticket{ticket.cantidad > 1 ? 's' : ''}
                             </Badge>
-                          </div>
-                        ))}
+                          </div>)}
                       </div>
-                    </div>
-                  ))}
+                    </div>)}
                   
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="flex items-center justify-between text-sm">
@@ -573,20 +502,14 @@ const TicketExchange = () => {
                   </div>
                 </div>
 
-                <Button
-                  onClick={handleReset}
-                  variant="outline"
-                  className="w-full"
-                >
+                <Button onClick={handleReset} variant="outline" className="w-full">
                   Realizar Otro Canje
                 </Button>
               </CardContent>
-            </Card>
-          )}
+            </Card>}
 
           {/* Paso 5: Error */}
-          {step === 'error' && (
-            <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+          {step === 'error' && <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
               <CardContent className="p-8 text-center">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <AlertCircle className="w-8 h-8 text-red-600" />
@@ -600,23 +523,15 @@ const TicketExchange = () => {
                 </p>
                 
                 <div className="space-y-3">
-                  <Button
-                    onClick={handleReset}
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                  >
+                  <Button onClick={handleReset} className="w-full bg-blue-500 hover:bg-blue-600 text-white">
                     Intentar de Nuevo
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => window.open('https://wa.me/584122097456', '_blank')}
-                  >
+                  <Button variant="outline" className="w-full" onClick={() => window.open('https://wa.me/584122097456', '_blank')}>
                     Contactar Soporte
                   </Button>
                 </div>
               </CardContent>
-            </Card>
-          )}
+            </Card>}
 
           {/* Footer */}
           <div className="text-center mt-8">
@@ -626,8 +541,6 @@ const TicketExchange = () => {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default TicketExchange;
