@@ -133,45 +133,23 @@ serve(async (req) => {
         }
         
         if (existing) {
-          // ACTUALIZAR todos los campos EXCEPTO el email (que es el identificador)
+          // ACTUALIZAR TODOS los campos del Excel (excepto email que es el identificador)
           const updates: any = { 
             nombre: nombre,
+            apellido: extractValue(row, columnMapping.apellido),
+            telefono: extractValue(row, columnMapping.telefono),
+            documento_identidad: extractValue(row, columnMapping.documento_identidad),
+            genero: extractValue(row, columnMapping.genero),
+            fecha_nacimiento: extractValue(row, columnMapping.fecha_nacimiento),
+            direccion: extractValue(row, columnMapping.direccion),
+            seccion: extractValue(row, columnMapping.seccion),
+            tiketera: extractValue(row, columnMapping.tiketera),
+            tipo_ticket_nombre: extractValue(row, columnMapping.tipo_ticket_nombre),
+            fecha_compra: extractValue(row, columnMapping.fecha_compra),
             updated_at: new Date().toISOString(),
             metadata: metadata
           }
           
-          // Actualizar TODOS los campos que vienen en el Excel
-          const apellido = extractValue(row, columnMapping.apellido)
-          if (apellido) updates.apellido = apellido
-          
-          const telefono = extractValue(row, columnMapping.telefono)
-          if (telefono) updates.telefono = telefono
-          
-          const documento = extractValue(row, columnMapping.documento_identidad)
-          if (documento) updates.documento_identidad = documento
-          
-          const genero = extractValue(row, columnMapping.genero)
-          if (genero) updates.genero = genero
-          
-          const fechaNac = extractValue(row, columnMapping.fecha_nacimiento)
-          if (fechaNac) updates.fecha_nacimiento = fechaNac
-          
-          const direccion = extractValue(row, columnMapping.direccion)
-          if (direccion) updates.direccion = direccion
-          
-          const seccion = extractValue(row, columnMapping.seccion)
-          if (seccion) updates.seccion = seccion
-          
-          const tiketera = extractValue(row, columnMapping.tiketera)
-          if (tiketera) updates.tiketera = tiketera
-          
-          const tipoTicket = extractValue(row, columnMapping.tipo_ticket_nombre)
-          if (tipoTicket) updates.tipo_ticket_nombre = tipoTicket
-          
-          const fechaCompra = extractValue(row, columnMapping.fecha_compra)
-          if (fechaCompra) updates.fecha_compra = fechaCompra
-          
-          // Siempre actualizar (al menos tendremos nombre, updated_at y metadata)
           await supabase
             .from('asistentes')
             .update(updates)
