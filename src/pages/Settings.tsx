@@ -50,6 +50,10 @@ const Settings = () => {
     loginAttempts: "5"
   });
 
+  const [exchangeSettings, setExchangeSettings] = useState({
+    canjesAutomaticos: false
+  });
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -87,6 +91,11 @@ const Settings = () => {
             setSecuritySettings(prev => ({
               ...prev,
               [config.clave]: valor === 'true' ? true : valor
+            }));
+          } else if (config.categoria === 'canjes') {
+            setExchangeSettings(prev => ({
+              ...prev,
+              [config.clave]: valor === 'true'
             }));
           }
         });
@@ -230,6 +239,10 @@ const Settings = () => {
     saveSettings('seguridad', securitySettings);
   };
 
+  const handleSaveExchange = () => {
+    saveSettings('canjes', exchangeSettings);
+  };
+
   return (
     <Layout>
       <div className="p-8">
@@ -243,7 +256,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="general" className="flex items-center gap-2">
               <SettingsIcon className="w-4 h-4" />
               General
@@ -259,6 +272,10 @@ const Settings = () => {
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
               Seguridad
+            </TabsTrigger>
+            <TabsTrigger value="exchange" className="flex items-center gap-2">
+              <Database className="w-4 h-4" />
+              Canjes
             </TabsTrigger>
             <TabsTrigger value="appearance" className="flex items-center gap-2">
               <Palette className="w-4 h-4" />
@@ -504,6 +521,31 @@ const Settings = () => {
                   />
                 </div>
                 <Button onClick={handleSaveSecurity} disabled={loading}>
+                  {loading ? "Guardando..." : "Guardar Configuración"}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="exchange" className="space-y-6">
+            <Card className="border-none shadow-lg">
+              <CardHeader>
+                <CardTitle>Configuración de Canjes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Aprobación Automática de Canjes</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Las solicitudes de canjes entrantes se aprobarán automáticamente sin revisión manual
+                    </p>
+                  </div>
+                  <Switch
+                    checked={exchangeSettings.canjesAutomaticos}
+                    onCheckedChange={(checked) => setExchangeSettings({ ...exchangeSettings, canjesAutomaticos: checked })}
+                  />
+                </div>
+                <Button onClick={handleSaveExchange} disabled={loading}>
                   {loading ? "Guardando..." : "Guardar Configuración"}
                 </Button>
               </CardContent>

@@ -261,6 +261,25 @@ const TicketExchange = () => {
 
       if (error) throw error;
 
+      // Verificar si los canjes automáticos están habilitados
+      const { data: configData } = await supabase
+        .from('configuraciones_sistema')
+        .select('valor')
+        .eq('clave', 'canjesAutomaticos')
+        .eq('categoria', 'canjes')
+        .single();
+
+      // Si los canjes automáticos están habilitados, aprobar inmediatamente
+      if (configData?.valor === 'true' && canje) {
+        await supabase
+          .from('canjes')
+          .update({
+            estado: 'aprobado',
+            fecha_procesado: new Date().toISOString()
+          })
+          .eq('id', canje.id);
+      }
+
       // Lanzar confeti y mostrar éxito
       setTimeout(() => {
         launchConfetti();
