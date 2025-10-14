@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Repeat, CheckCircle, XCircle, Clock, Plus, Search, User, Calendar, Ticket, ChevronDown, Check, X, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Repeat, CheckCircle, XCircle, Clock, Plus, Search, User, Calendar, Ticket, ChevronDown, Check, X, Trash2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -718,13 +719,20 @@ const Exchanges = () => {
               Administra las solicitudes de intercambio de tickets
             </p>
           </div>
-          <Dialog open={isNewExchangeOpen} onOpenChange={setIsNewExchangeOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
-                <Plus className="w-4 h-4 mr-2" />
-                Nuevo Canje
+          <div className="flex gap-3">
+            <Link to="/canje" target="_blank">
+              <Button variant="outline">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Ver Página Pública
               </Button>
-            </DialogTrigger>
+            </Link>
+            <Dialog open={isNewExchangeOpen} onOpenChange={setIsNewExchangeOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nuevo Canje
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
@@ -1007,6 +1015,7 @@ const Exchanges = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Stats Grid */}
