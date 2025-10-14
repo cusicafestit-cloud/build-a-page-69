@@ -76,6 +76,7 @@ const Exchanges = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterEvent, setFilterEvent] = useState<string>("all");
   const [isNewExchangeOpen, setIsNewExchangeOpen] = useState(false);
   const [selectedExchange, setSelectedExchange] = useState<Exchange | null>(null);
   const [isProcessDialogOpen, setIsProcessDialogOpen] = useState(false);
@@ -264,14 +265,18 @@ const Exchanges = () => {
     };
   }, [refetch]);
 
+  // Obtener lista única de eventos
+  const uniqueEvents = Array.from(new Set(exchanges.map(e => e.originalEvent))).sort();
+
   const filteredExchanges = exchanges.filter(exchange => {
     const matchesSearch = exchange.attendeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          exchange.attendeeEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          exchange.originalEvent.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesFilter = filterStatus === "all" || exchange.status === filterStatus;
+    const matchesEvent = filterEvent === "all" || exchange.originalEvent === filterEvent;
     
-    return matchesSearch && matchesFilter;
+    return matchesSearch && matchesFilter && matchesEvent;
   });
 
   // Paginación
@@ -283,7 +288,7 @@ const Exchanges = () => {
   // Reset a página 1 cuando cambian los filtros
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus, rowsPerPage]);
+  }, [searchTerm, filterStatus, filterEvent, rowsPerPage]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -1149,6 +1154,19 @@ const Exchanges = () => {
                   <option value="canjeado">Canjeados</option>
                   <option value="disponible">Disponibles</option>
                   <option value="esperando_tp">Esperando TP</option>
+                </select>
+                <select
+                  value={filterEvent}
+                  onChange={(e) => setFilterEvent(e.target.value)}
+                  className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+                  title="Filtrar por evento"
+                >
+                  <option value="all">Todos los eventos</option>
+                  {uniqueEvents.map((event) => (
+                    <option key={event} value={event}>
+                      {event}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
