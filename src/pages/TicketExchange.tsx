@@ -23,11 +23,15 @@ const TicketExchange = () => {
   const {
     toast
   } = useToast();
-  const [step, setStep] = useState<'email' | 'loading' | 'canjes' | 'confirming' | 'success' | 'error'>('email');
+  const [step, setStep] = useState<'email' | 'loading' | 'canjes' | 'tickets' | 'select-event' | 'confirming' | 'success' | 'error'>('email');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [attendeeData, setAttendeeData] = useState<AttendeeData | null>(null);
   const [availableCanjes, setAvailableCanjes] = useState<CanjeData[]>([]);
+  const [userTickets, setUserTickets] = useState<any[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [availableEvents, setAvailableEvents] = useState<EventData[]>([]);
+  const [selectedTargetEvent, setSelectedTargetEvent] = useState<EventData | null>(null);
   const [processedCanjes, setProcessedCanjes] = useState<any[]>([]);
   const [eventData, setEventData] = useState<EventData | null>(null);
   const [ticketTypeData, setTicketTypeData] = useState<TicketTypeData | null>(null);
@@ -102,74 +106,32 @@ const TicketExchange = () => {
       }
       setAttendeeData(attendee);
 
-      // Buscar canjes disponibles para este asistente
-      // Solo mostrar canjes donde ambos eventos tengan canjes habilitados
+      // Buscar tickets del usuario (asistencias)
       const {
-        data: canjes,
-        error: canjesError
-      } = await supabase.from('canjes').select(`
+        data: asistencias,
+        error: asistenciasError
+      } = await supabase
+        .from('asistencias')
+        .select(`
           *,
-          evento_original:eventos!evento_original_id(*),
-          tipo_ticket_original:tipos_tickets!tipo_ticket_original_id(*)
-        `).eq('asistente_id', attendee.id).eq('estado', 'disponible');
-      if (canjesError) {
-        console.error('Error fetching canjes:', canjesError);
+          evento:eventos(*),
+          tipo_ticket:tipos_tickets(*)
+        `)
+        .eq('asistente_id', attendee.id)
+        .eq('estado', 'confirmado');
+
+      if (asistenciasError) {
+        console.error('Error fetching asistencias:', asistenciasError);
         setStep('error');
         return;
       }
 
-      // Validar límite máximo de canjes por tipo de ticket
-      const canjesValidados = [];
-      const canjesRechazados = [];
-      for (const canje of canjes || []) {
-        const eventoOriginalHabilitado = canje.evento_original?.canjes_habilitados === true;
-        if (!eventoOriginalHabilitado) {
-          continue; // Saltar canjes de eventos sin canjes habilitados
-        }
-        const tipoTicket = canje.tipo_ticket_original;
-        const maximoCanjes = tipoTicket?.maximo_canjes || 0;
+      // Filtrar solo tickets de eventos con canjes habilitados
+      const ticketsCanjeables = (asistencias || []).filter((asistencia: any) => 
+        asistencia.evento?.canjes_habilitados === true
+      );
 
-        // Si maximo_canjes es 0, significa ilimitado
-        if (maximoCanjes === 0) {
-          canjesValidados.push(canje);
-          continue;
-        }
-
-        // Contar cuántos canjes ya se han procesado para este tipo de ticket
-        const {
-          count: canjesUsados,
-          error: countError
-        } = await supabase.from('canjes').select('*', {
-          count: 'exact',
-          head: true
-        }).eq('tipo_ticket_original_id', canje.tipo_ticket_original_id).eq('estado', 'canjeado');
-        if (countError) {
-          console.error('Error counting canjes:', countError);
-          continue;
-        }
-
-        // Verificar si se alcanzó el límite
-        if ((canjesUsados || 0) >= maximoCanjes) {
-          canjesRechazados.push({
-            ...canje,
-            razon: `Se alcanzó el límite máximo de ${maximoCanjes} canje(s) para este tipo de ticket`
-          });
-        } else {
-          canjesValidados.push(canje);
-        }
-      }
-
-      // Si hay canjes rechazados, mostrar mensaje de advertencia
-      if (canjesRechazados.length > 0) {
-        const mensajes = canjesRechazados.map((c: any) => `${c.tipo_ticket_original?.tipo}: ${c.razon}`).join('\n');
-        toast({
-          title: "Algunos canjes no están disponibles",
-          description: mensajes,
-          variant: "destructive"
-        });
-      }
-      const canjesHabilitados = canjesValidados;
-      if (canjesHabilitados.length === 0) {
+      if (ticketsCanjeables.length === 0) {
         setStep('error');
         toast({
           title: "Sin canjes disponibles",
@@ -178,8 +140,9 @@ const TicketExchange = () => {
         });
         return;
       }
-      setAvailableCanjes(canjesHabilitados);
-      setStep('canjes');
+
+      setUserTickets(ticketsCanjeables);
+      setStep('tickets');
     } catch (error) {
       console.error('Error:', error);
       setStep('error');
@@ -190,6 +153,124 @@ const TicketExchange = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Seleccionar ticket para canje
+  const handleSelectTicket = async (ticket: any) => {
+    setSelectedTicket(ticket);
+    setLoading(true);
+
+    try {
+      // Buscar eventos disponibles para canjear (diferentes al evento original y con canjes habilitados)
+      const { data: eventos, error } = await supabase
+        .from('eventos')
+        .select('*')
+        .eq('canjes_habilitados', true)
+        .neq('id', ticket.evento_id)
+        .order('fecha', { ascending: true });
+
+      if (error) throw error;
+
+      if (!eventos || eventos.length === 0) {
+        toast({
+          title: "Sin eventos disponibles",
+          description: "No hay eventos disponibles para canjear en este momento",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      setAvailableEvents(eventos);
+      setStep('select-event');
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al buscar eventos disponibles",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Crear solicitud de canje
+  const handleCreateExchange = async () => {
+    if (!selectedTicket || !selectedTargetEvent || !attendeeData) {
+      toast({
+        title: "Error",
+        description: "Faltan datos para crear el canje",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setConfirming(true);
+
+    try {
+      // Verificar límite de canjes
+      const maximoCanjes = selectedTicket.tipo_ticket?.maximo_canjes || 0;
+      
+      if (maximoCanjes > 0) {
+        const { count: canjesUsados, error: countError } = await supabase
+          .from('canjes')
+          .select('*', { count: 'exact', head: true })
+          .eq('tipo_ticket_original_id', selectedTicket.tipo_ticket_id)
+          .in('estado', ['pendiente', 'aprobado', 'canjeado']);
+
+        if (countError) throw countError;
+
+        if ((canjesUsados || 0) >= maximoCanjes) {
+          toast({
+            title: "Límite alcanzado",
+            description: `Este tipo de ticket ha alcanzado el límite máximo de ${maximoCanjes} canje(s)`,
+            variant: "destructive"
+          });
+          setConfirming(false);
+          return;
+        }
+      }
+
+      // Crear el canje
+      const { data: canje, error } = await supabase
+        .from('canjes')
+        .insert({
+          asistente_id: attendeeData.id,
+          nombre_asistente: attendeeData.nombre || '',
+          apellido_asistente: attendeeData.apellido || '',
+          correo: attendeeData.email,
+          evento_original_id: selectedTicket.evento_id,
+          tipo_ticket_original_id: selectedTicket.tipo_ticket_id,
+          cantidad: 1,
+          estado: 'pendiente',
+          evento_tp_id: selectedTicket.evento?.tp_id,
+          ticket_tp_id: selectedTicket.tipo_ticket?.tp_id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Lanzar confeti y mostrar éxito
+      setTimeout(() => {
+        launchConfetti();
+        setStep('success');
+        toast({
+          title: "¡Solicitud enviada!",
+          description: "Tu solicitud de canje ha sido recibida y será procesada por nuestro equipo"
+        });
+      }, 500);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo crear la solicitud de canje",
+        variant: "destructive"
+      });
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -295,6 +376,10 @@ const TicketExchange = () => {
     setEmail('');
     setAttendeeData(null);
     setAvailableCanjes([]);
+    setUserTickets([]);
+    setSelectedTicket(null);
+    setAvailableEvents([]);
+    setSelectedTargetEvent(null);
     setEventData(null);
     setTicketTypeData(null);
     setSelectedCanje(null);
@@ -364,7 +449,7 @@ const TicketExchange = () => {
                     Verificando información
                   </h3>
                   <p className="text-gray-600 text-sm">
-                    Estamos buscando tus canjes disponibles...
+                    Estamos buscando tus tickets disponibles...
                   </p>
                 </div>
                 
@@ -380,12 +465,179 @@ const TicketExchange = () => {
                   </div>
                 </div>
                 
-                {/* Skeleton de lista de canjes */}
+                {/* Skeleton de lista de tickets */}
                 <ListSkeleton items={3} />
               </CardContent>
             </Card>}
 
-          {/* Paso 3: Mostrar canjes disponibles */}
+          {/* Paso 3: Seleccionar Ticket */}
+          {step === 'tickets' && <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Ticket className="w-5 h-5" />
+                  Tus Tickets
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 pt-0">
+                <div className="space-y-4">
+                  {/* Información del usuario */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">
+                        {attendeeData?.nombre}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">{email}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-600">
+                    Selecciona el ticket que deseas canjear:
+                  </p>
+
+                  {/* Lista de tickets */}
+                  {userTickets.map((ticket: any) => (
+                    <div 
+                      key={ticket.id} 
+                      className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer hover:border-green-300"
+                      onClick={() => handleSelectTicket(ticket)}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-500" />
+                          <span className="font-medium text-gray-800">
+                            {ticket.evento?.nombre}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Ticket className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-600">
+                            {ticket.tipo_ticket?.tipo}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant="secondary" 
+                            className="text-xs"
+                            style={{ backgroundColor: ticket.tipo_ticket?.color || '#6B7280' }}
+                          >
+                            Código: {ticket.codigo_ticket}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <Button 
+                    variant="outline" 
+                    onClick={handleReset} 
+                    className="w-full mt-4"
+                  >
+                    Volver
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>}
+
+          {/* Paso 4: Seleccionar Evento Destino */}
+          {step === 'select-event' && <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Calendar className="w-5 h-5" />
+                  Selecciona el Evento Destino
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 pt-0">
+                <div className="space-y-4">
+                  {/* Ticket seleccionado */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-xs text-green-700 mb-2 font-medium">Ticket a Canjear:</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-3 h-3 text-green-600" />
+                        <span className="text-sm font-medium text-green-800">
+                          {selectedTicket?.evento?.nombre}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Ticket className="w-3 h-3 text-green-600" />
+                        <span className="text-xs text-green-700">
+                          {selectedTicket?.tipo_ticket?.tipo}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-600">
+                    Selecciona el evento al cual deseas canjear:
+                  </p>
+
+                  {/* Lista de eventos disponibles */}
+                  {availableEvents.map((event: any) => (
+                    <div 
+                      key={event.id} 
+                      className={`border rounded-lg p-4 transition-colors cursor-pointer ${
+                        selectedTargetEvent?.id === event.id 
+                          ? 'bg-blue-50 border-blue-300' 
+                          : 'hover:bg-gray-50 hover:border-gray-300'
+                      }`}
+                      onClick={() => setSelectedTargetEvent(event)}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-800">
+                            {event.nombre}
+                          </span>
+                          {event.tp_id && (
+                            <Badge variant="outline" className="text-xs">
+                              {event.tp_id}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-600">
+                            {new Date(event.fecha).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setStep('tickets')} 
+                      className="w-full"
+                    >
+                      Volver
+                    </Button>
+                    <Button 
+                      onClick={handleCreateExchange}
+                      disabled={!selectedTargetEvent || confirming}
+                      className="w-full bg-green-500 hover:bg-green-600 text-white"
+                    >
+                      {confirming ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Procesando...
+                        </>
+                      ) : (
+                        'Solicitar Canje'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>}
+
+          {/* Paso 5: Mostrar canjes disponibles (flujo anterior) */}
           {step === 'canjes' && <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-gray-800">
