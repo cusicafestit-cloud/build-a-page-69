@@ -306,14 +306,39 @@ const Exchanges = () => {
     }
   };
 
-  const handleProcessExchange = (exchange: Exchange, action: "approve" | "reject") => {
-    toast({
-      title: `Canje ${action === "approve" ? "aprobado" : "rechazado"}`,
-      description: `El canje de ${exchange.attendeeName} ha sido ${action === "approve" ? "aprobado" : "rechazado"}.`,
-      variant: action === "approve" ? "default" : "destructive",
-    });
-    setIsProcessDialogOpen(false);
-    setSelectedExchange(null);
+  const handleProcessExchange = async (exchange: Exchange, action: "approve" | "reject") => {
+    try {
+      const newStatus = action === "approve" ? "aprobado" : "rechazado";
+      
+      const { error } = await supabase
+        .from('canjes')
+        .update({ 
+          estado: newStatus,
+          fecha_procesado: new Date().toISOString(),
+          procesado_por: (await supabase.auth.getUser()).data.user?.id || null
+        })
+        .eq('id', exchange.id);
+
+      if (error) throw error;
+
+      toast({
+        title: `Canje ${action === "approve" ? "aprobado" : "rechazado"}`,
+        description: `El canje de ${exchange.attendeeName} ha sido ${action === "approve" ? "aprobado" : "rechazado"}.`,
+        variant: action === "approve" ? "default" : "destructive",
+      });
+
+      refetch();
+      setIsProcessDialogOpen(false);
+      setIsDetailsDialogOpen(false);
+      setSelectedExchange(null);
+    } catch (error) {
+      console.error('Error processing exchange:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo procesar el canje. Intenta nuevamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Funciones para manejar la selección de datos
@@ -1318,6 +1343,12 @@ const Exchanges = () => {
             </DialogHeader>
             {selectedExchange && (
               <div className="space-y-4">
+                {/* Estado actual */}
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <Label className="text-muted-foreground">Estado Actual</Label>
+                  {getStatusBadge(selectedExchange.status)}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-muted-foreground">Asistente</Label>
@@ -1330,6 +1361,13 @@ const Exchanges = () => {
                     <p className="text-sm text-muted-foreground">{selectedExchange.originalTicketType}</p>
                   </div>
                 </div>
+
+                {selectedExchange.reason && (
+                  <div>
+                    <Label className="text-muted-foreground">Motivo</Label>
+                    <p className="text-sm mt-1">{selectedExchange.reason}</p>
+                  </div>
+                )}
 
                 <div className="border-t pt-4">
                   <div className="space-y-3">
@@ -1373,10 +1411,28 @@ const Exchanges = () => {
                 </div>
               </div>
             )}
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
                 Cerrar
               </Button>
+              {selectedExchange && selectedExchange.status === "pending" && (
+                <>
+                  <Button 
+                    variant="destructive"
+                    onClick={() => handleProcessExchange(selectedExchange, "reject")}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Rechazar
+                  </Button>
+                  <Button 
+                    onClick={() => handleProcessExchange(selectedExchange, "approve")}
+                    className="bg-green-500 hover:bg-green-600"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Aprobar
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
