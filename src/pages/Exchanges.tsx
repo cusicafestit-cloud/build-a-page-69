@@ -1268,16 +1268,24 @@ const Exchanges = () => {
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-2">
                             {exchange.status === "pending" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedExchange(exchange);
-                                  setIsProcessDialogOpen(true);
-                                }}
-                              >
-                                Procesar
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleProcessExchange(exchange, "reject")}
+                                  title="Rechazar canje"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleProcessExchange(exchange, "approve")}
+                                  className="bg-green-500 hover:bg-green-600"
+                                  title="Aprobar canje"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </Button>
+                              </>
                             )}
                             <Button
                               size="sm"
