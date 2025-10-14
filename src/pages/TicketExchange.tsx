@@ -246,7 +246,15 @@ const TicketExchange = () => {
           cantidad: 1,
           estado: 'pendiente',
           evento_tp_id: selectedTicket.evento?.tp_id,
-          ticket_tp_id: selectedTicket.tipo_ticket?.tp_id
+          ticket_tp_id: selectedTicket.tipo_ticket?.tp_id,
+          // Información del evento destino
+          evento_destino_id: selectedTargetEvent.id,
+          evento_destino_nombre: selectedTargetEvent.nombre,
+          evento_destino_tp_id: selectedTargetEvent.tp_id,
+          // Los campos del tipo de ticket destino se dejarán null ya que no se seleccionan en este flujo
+          tipo_ticket_destino_id: null,
+          tipo_ticket_destino_nombre: null,
+          tipo_ticket_destino_tp_id: null
         })
         .select()
         .single();

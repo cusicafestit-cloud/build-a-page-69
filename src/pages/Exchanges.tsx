@@ -486,7 +486,7 @@ const Exchanges = () => {
         });
       }
 
-      // Obtener información del evento
+      // Obtener información del evento original
       const { data: eventInfo, error: eventInfoError } = await supabase
         .from('eventos')
         .select('tp_id')
@@ -495,9 +495,18 @@ const Exchanges = () => {
 
       if (eventInfoError) throw eventInfoError;
 
+      // Obtener información del evento destino
+      const { data: targetEventInfo, error: targetEventInfoError } = await supabase
+        .from('eventos')
+        .select('id, nombre, tp_id')
+        .eq('id', newExchange.targetEventId)
+        .single();
+
+      if (targetEventInfoError) throw targetEventInfoError;
+
       // Crear un registro de canje por cada tipo de ticket seleccionado
       const promises = newExchange.selectedTicketTypes.map(async (ticketType) => {
-        // Obtener información del tipo de ticket
+        // Obtener información del tipo de ticket original
         const { data: ticketTypeInfo } = await supabase
           .from('tipos_tickets')
           .select('tp_id')
@@ -520,6 +529,14 @@ const Exchanges = () => {
             fecha_solicitud: new Date().toISOString(),
             evento_tp_id: eventInfo?.tp_id || null,
             ticket_tp_id: ticketTypeInfo?.tp_id || null,
+            // Información del evento destino
+            evento_destino_id: targetEventInfo?.id || null,
+            evento_destino_nombre: targetEventInfo?.nombre || null,
+            evento_destino_tp_id: targetEventInfo?.tp_id || null,
+            // Información del tipo de ticket destino
+            tipo_ticket_destino_id: ticketType.id,
+            tipo_ticket_destino_nombre: ticketType.tipo,
+            tipo_ticket_destino_tp_id: ticketType.tp_id || null,
             notas_admin: null,
             fecha_procesado: null,
             procesado_por: null,

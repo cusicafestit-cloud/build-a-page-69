@@ -231,6 +231,9 @@ export type Database = {
           email_error_enviado: boolean | null
           ERROR_TP: boolean | null
           estado: string | null
+          evento_destino_id: string | null
+          evento_destino_nombre: string | null
+          evento_destino_tp_id: string | null
           evento_original_id: string
           evento_tp_id: string | null
           fecha_email_error: string | null
@@ -246,6 +249,9 @@ export type Database = {
           response_tp: string | null
           ticket_ids: string[] | null
           ticket_tp_id: string | null
+          tipo_ticket_destino_id: string | null
+          tipo_ticket_destino_nombre: string | null
+          tipo_ticket_destino_tp_id: string | null
           tipo_ticket_original_id: string
           updated_at: string | null
         }
@@ -260,6 +266,9 @@ export type Database = {
           email_error_enviado?: boolean | null
           ERROR_TP?: boolean | null
           estado?: string | null
+          evento_destino_id?: string | null
+          evento_destino_nombre?: string | null
+          evento_destino_tp_id?: string | null
           evento_original_id: string
           evento_tp_id?: string | null
           fecha_email_error?: string | null
@@ -275,6 +284,9 @@ export type Database = {
           response_tp?: string | null
           ticket_ids?: string[] | null
           ticket_tp_id?: string | null
+          tipo_ticket_destino_id?: string | null
+          tipo_ticket_destino_nombre?: string | null
+          tipo_ticket_destino_tp_id?: string | null
           tipo_ticket_original_id: string
           updated_at?: string | null
         }
@@ -289,6 +301,9 @@ export type Database = {
           email_error_enviado?: boolean | null
           ERROR_TP?: boolean | null
           estado?: string | null
+          evento_destino_id?: string | null
+          evento_destino_nombre?: string | null
+          evento_destino_tp_id?: string | null
           evento_original_id?: string
           evento_tp_id?: string | null
           fecha_email_error?: string | null
@@ -304,6 +319,9 @@ export type Database = {
           response_tp?: string | null
           ticket_ids?: string[] | null
           ticket_tp_id?: string | null
+          tipo_ticket_destino_id?: string | null
+          tipo_ticket_destino_nombre?: string | null
+          tipo_ticket_destino_tp_id?: string | null
           tipo_ticket_original_id?: string
           updated_at?: string | null
         }
@@ -313,6 +331,13 @@ export type Database = {
             columns: ["asistente_id"]
             isOneToOne: false
             referencedRelation: "asistentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canjes_evento_destino_id_fkey"
+            columns: ["evento_destino_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
             referencedColumns: ["id"]
           },
           {
@@ -327,6 +352,13 @@ export type Database = {
             columns: ["procesado_por"]
             isOneToOne: false
             referencedRelation: "usuarios_sistema"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canjes_tipo_ticket_destino_id_fkey"
+            columns: ["tipo_ticket_destino_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_tickets"
             referencedColumns: ["id"]
           },
           {
