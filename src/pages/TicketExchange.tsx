@@ -697,7 +697,7 @@ const TicketExchange = () => {
                         <option value="">Seleccionar tipo de ticket...</option>
                         {targetTicketTypes.map((ticketType) => (
                           <option key={ticketType.id} value={ticketType.id}>
-                            {ticketType.tipo} {ticketType.tp_id ? `(${ticketType.tp_id})` : ''}
+                            {ticketType.tipo}
                           </option>
                         ))}
                       </select>
