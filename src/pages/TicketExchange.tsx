@@ -268,6 +268,15 @@ const TicketExchange = () => {
       }
 
       // Crear el canje con la información del tipo de ticket destino
+      console.log('Creando canje con los siguientes datos:', {
+        cantidad: ticketQuantity,
+        tipo_ticket_destino_id: selectedTargetTicketType.id,
+        tipo_ticket_destino_nombre: selectedTargetTicketType.tipo,
+        tipo_ticket_destino_tp_id: selectedTargetTicketType.tp_id,
+        evento_destino_id: selectedTargetEvent.id,
+        evento_destino_nombre: selectedTargetEvent.nombre
+      });
+      
       const { data: canje, error } = await supabase
         .from('canjes')
         .insert({
@@ -294,6 +303,8 @@ const TicketExchange = () => {
         .single();
 
       if (error) throw error;
+
+      console.log('Canje creado exitosamente:', canje);
 
       // Verificar si los canjes automáticos están habilitados
       const { data: configData } = await supabase
