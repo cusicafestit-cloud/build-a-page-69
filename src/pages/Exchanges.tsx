@@ -94,6 +94,9 @@ const Exchanges = () => {
     attendeeEmail: "",
     originalEventId: "",
     targetEventId: "",
+    targetTicketTypeId: "",
+    targetTicketTypeName: "",
+    targetTicketTypeTpId: "",
     selectedTicketTypes: [] as SelectedTicketType[],
     reason: ""
   });
@@ -146,8 +149,25 @@ const Exchanges = () => {
     enabled: !!newExchange.attendeeId,
   });
 
-  const { data: ticketTypes = [] } = useQuery({
-    queryKey: ["ticket-types", newExchange.targetEventId],
+  // Tipos de tickets del evento ORIGINAL
+  const { data: originalTicketTypes = [] } = useQuery({
+    queryKey: ["original-ticket-types", newExchange.originalEventId],
+    queryFn: async () => {
+      if (!newExchange.originalEventId) return [];
+      const { data, error } = await supabase
+        .from("tipos_tickets")
+        .select("id, tipo, tp_id, color")
+        .eq("evento_id", newExchange.originalEventId)
+        .order("tipo");
+      if (error) throw error;
+      return data as TicketType[];
+    },
+    enabled: !!newExchange.originalEventId,
+  });
+
+  // Tipos de tickets del evento DESTINO
+  const { data: targetTicketTypes = [] } = useQuery({
+    queryKey: ["target-ticket-types", newExchange.targetEventId],
     queryFn: async () => {
       if (!newExchange.targetEventId) return [];
       const { data, error } = await supabase
@@ -380,6 +400,9 @@ const Exchanges = () => {
     setNewExchange({
       ...newExchange,
       targetEventId: event.id,
+      targetTicketTypeId: "",
+      targetTicketTypeName: "",
+      targetTicketTypeTpId: "",
       selectedTicketTypes: [] // Reset ticket types when target event changes
     });
     setTargetEventSearchOpen(false);
@@ -518,12 +541,12 @@ const Exchanges = () => {
           .eq('id', ticketType.id)
           .single();
 
-        // Obtener información completa del tipo de ticket destino desde la BD
-        const { data: targetTicketTypeInfo } = await supabase
-          .from('tipos_tickets')
-          .select('id, tipo, tp_id')
-          .eq('id', ticketType.id)
-          .single();
+      // Usar la información del tipo de ticket destino seleccionado por el usuario
+        const targetTicketTypeInfo = {
+          id: newExchange.targetTicketTypeId,
+          tipo: newExchange.targetTicketTypeName,
+          tp_id: newExchange.targetTicketTypeTpId
+        };
 
         const { error } = await supabase
           .from('canjes')
@@ -579,6 +602,9 @@ const Exchanges = () => {
         attendeeEmail: "",
         originalEventId: "",
         targetEventId: "",
+        targetTicketTypeId: "",
+        targetTicketTypeName: "",
+        targetTicketTypeTpId: "",
         selectedTicketTypes: [],
         reason: ""
       });
@@ -985,12 +1011,51 @@ const Exchanges = () => {
                   </div>
                 )}
 
-                {/* Selector de Tipos de Tickets */}
+                {/* Selector de Tipo de Ticket Destino */}
                 {newExchange.targetEventId && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Ticket className="w-4 h-4" />
+                      Tipo de Ticket Destino
+                    </Label>
+                    <div className="border rounded-lg p-3 space-y-2">
+                      {targetTicketTypes.length === 0 ? (
+                        <div className="text-center text-muted-foreground py-4">
+                          <Ticket className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          <p>No hay tipos de tickets disponibles para este evento</p>
+                        </div>
+                      ) : (
+                        <select
+                          value={newExchange.targetTicketTypeId}
+                          onChange={(e) => {
+                            const selectedTicket = targetTicketTypes.find(t => t.id === e.target.value);
+                            setNewExchange({
+                              ...newExchange,
+                              targetTicketTypeId: e.target.value,
+                              targetTicketTypeName: selectedTicket?.tipo || "",
+                              targetTicketTypeTpId: selectedTicket?.tp_id || ""
+                            });
+                          }}
+                          className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                        >
+                          <option value="">Seleccionar tipo de ticket...</option>
+                          {targetTicketTypes.map((ticketType) => (
+                            <option key={ticketType.id} value={ticketType.id}>
+                              {ticketType.tipo} {ticketType.tp_id ? `(${ticketType.tp_id})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Selector de Tipos de Tickets Originales */}
+                {newExchange.targetTicketTypeId && (
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2">
                       <Ticket className="w-4 h-4" />
-                      Tipos de Tickets a Canjear
+                      Tipos de Tickets del Evento Original a Canjear
                       {newExchange.selectedTicketTypes.length > 0 && (
                         <Badge variant="secondary" className="ml-2">
                           {newExchange.selectedTicketTypes.length} seleccionados
@@ -998,13 +1063,13 @@ const Exchanges = () => {
                       )}
                     </Label>
                     <div className="border rounded-lg p-4 space-y-2 max-h-40 overflow-y-auto">
-                      {ticketTypes.length === 0 ? (
+                      {originalTicketTypes.length === 0 ? (
                         <div className="text-center text-muted-foreground py-4">
                           <Ticket className="w-8 h-8 mx-auto mb-2 opacity-50" />
                           <p>No hay tipos de tickets disponibles para este evento</p>
                         </div>
                       ) : (
-                        ticketTypes.map((ticketType) => {
+                        originalTicketTypes.map((ticketType) => {
                           const selectedTicket = newExchange.selectedTicketTypes.find(t => t.id === ticketType.id);
                           const isSelected = !!selectedTicket;
                           return (
@@ -1065,7 +1130,7 @@ const Exchanges = () => {
               <DialogFooter>
                 <Button 
                   onClick={handleCreateExchange}
-                  disabled={!newExchange.attendeeId || !newExchange.originalEventId || !newExchange.targetEventId || newExchange.selectedTicketTypes.length === 0}
+                  disabled={!newExchange.attendeeId || !newExchange.originalEventId || !newExchange.targetEventId || !newExchange.targetTicketTypeId || newExchange.selectedTicketTypes.length === 0}
                 >
                   Crear Solicitud ({newExchange.selectedTicketTypes.length} registro{newExchange.selectedTicketTypes.length !== 1 ? 's' : ''})
                 </Button>
