@@ -601,11 +601,6 @@ const TicketExchange = () => {
                           <span className="font-medium text-gray-800">
                             {event.nombre}
                           </span>
-                          {event.tp_id && (
-                            <Badge variant="outline" className="text-xs">
-                              {event.tp_id}
-                            </Badge>
-                          )}
                         </div>
                         
                         <div className="flex items-center gap-2">
