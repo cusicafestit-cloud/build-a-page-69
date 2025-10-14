@@ -683,6 +683,9 @@ const Exchanges = () => {
 
       if (error) throw error;
 
+      // Refetch inmediatamente para actualizar la UI
+      await refetch();
+
       toast({
         title: "Canje eliminado",
         description: "El canje ha sido eliminado exitosamente.",
