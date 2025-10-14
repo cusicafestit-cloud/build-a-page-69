@@ -708,48 +708,82 @@ const TicketExchange = () => {
                   Tu solicitud de canje ha sido recibida, te enviaremos un correo electrónico con toda la información de tu canje.
                 </p>
                 
-                <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-                  <h4 className="font-medium text-gray-800 mb-3">Resumen de tu canje:</h4>
+                <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-lg p-6 mb-6 text-left border border-green-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-gray-800 text-base">Resumen de Solicitud</h4>
+                    <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                      En Proceso
+                    </Badge>
+                  </div>
                   
-                  {/* Agrupar canjes por evento */}
-                  {processedCanjes.reduce((acc: any[], canje: any) => {
-                const eventoNombre = canje.evento_original?.nombre || 'Sin evento';
-                const existing = acc.find(item => item.evento === eventoNombre);
-                if (existing) {
-                  existing.tickets.push({
-                    tipo: canje.tipo_ticket_original?.tipo || 'Sin tipo',
-                    cantidad: canje.cantidad || 1
-                  });
-                } else {
-                  acc.push({
-                    evento: eventoNombre,
-                    tickets: [{
-                      tipo: canje.tipo_ticket_original?.tipo || 'Sin tipo',
-                      cantidad: canje.cantidad || 1
-                    }]
-                  });
-                }
-                return acc;
-              }, []).map((grupo: any, index: number) => <div key={index} className="mb-4 last:mb-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        <p className="font-semibold text-gray-700">{grupo.evento}</p>
+                  {/* Ticket Original */}
+                  {selectedTicket && (
+                    <div className="mb-4 pb-4 border-b border-gray-200">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                        Ticket a Canjear
+                      </p>
+                      <div className="bg-white rounded-md p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-500" />
+                          <span className="font-medium text-gray-800 text-sm">
+                            {selectedTicket.evento?.nombre}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Ticket className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-600">
+                            {selectedTicket.tipo_ticket?.tipo}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant="outline" 
+                            className="text-xs"
+                            style={{ 
+                              backgroundColor: `${selectedTicket.tipo_ticket?.color}20`,
+                              borderColor: selectedTicket.tipo_ticket?.color 
+                            }}
+                          >
+                            {selectedTicket.codigo_ticket}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="ml-6 space-y-1">
-                        {grupo.tickets.map((ticket: any, ticketIndex: number) => <div key={ticketIndex} className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">• {ticket.tipo}</span>
-                            <Badge variant="secondary" className="text-xs">
-                              {ticket.cantidad} ticket{ticket.cantidad > 1 ? 's' : ''}
-                            </Badge>
-                          </div>)}
-                      </div>
-                    </div>)}
-                  
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-gray-700">Total de canjes:</span>
-                      <span className="font-semibold text-gray-800">{processedCanjes.length}</span>
                     </div>
+                  )}
+
+                  {/* Evento Destino */}
+                  {selectedTargetEvent && (
+                    <div className="mb-4">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                        Nuevo Evento
+                      </p>
+                      <div className="bg-white rounded-md p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-green-600" />
+                          <span className="font-medium text-gray-800 text-sm">
+                            {selectedTargetEvent.nombre}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">
+                            {new Date(selectedTargetEvent.fecha).toLocaleDateString('es-ES', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Información adicional */}
+                  <div className="bg-blue-50 rounded-md p-3 mt-4 border border-blue-200">
+                    <p className="text-xs text-blue-800 leading-relaxed">
+                      <strong>Próximos pasos:</strong> Nuestro equipo revisará tu solicitud y te contactará 
+                      por correo electrónico en las próximas 24-48 horas con los detalles de tu nuevo ticket.
+                    </p>
                   </div>
                 </div>
 
