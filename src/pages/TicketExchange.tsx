@@ -32,6 +32,9 @@ const TicketExchange = () => {
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [availableEvents, setAvailableEvents] = useState<EventData[]>([]);
   const [selectedTargetEvent, setSelectedTargetEvent] = useState<EventData | null>(null);
+  const [targetTicketTypes, setTargetTicketTypes] = useState<TicketTypeData[]>([]);
+  const [selectedTargetTicketType, setSelectedTargetTicketType] = useState<TicketTypeData | null>(null);
+  const [ticketQuantity, setTicketQuantity] = useState(1);
   const [processedCanjes, setProcessedCanjes] = useState<any[]>([]);
   const [eventData, setEventData] = useState<EventData | null>(null);
   const [ticketTypeData, setTicketTypeData] = useState<TicketTypeData | null>(null);
@@ -159,6 +162,10 @@ const TicketExchange = () => {
   // Seleccionar ticket para canje
   const handleSelectTicket = async (ticket: any) => {
     setSelectedTicket(ticket);
+    setSelectedTargetEvent(null);
+    setSelectedTargetTicketType(null);
+    setTargetTicketTypes([]);
+    setTicketQuantity(1);
     setLoading(true);
 
     try {
@@ -196,12 +203,39 @@ const TicketExchange = () => {
     }
   };
 
-  // Crear solicitud de canje
-  const handleCreateExchange = async () => {
-    if (!selectedTicket || !selectedTargetEvent || !attendeeData) {
+  // Cargar tipos de tickets cuando se selecciona un evento destino
+  const handleSelectTargetEvent = async (event: EventData) => {
+    setSelectedTargetEvent(event);
+    setSelectedTargetTicketType(null);
+    setTicketQuantity(1);
+    
+    try {
+      // Buscar tipos de tickets del evento destino
+      const { data: ticketTypes, error } = await supabase
+        .from('tipos_tickets')
+        .select('*')
+        .eq('evento_id', event.id)
+        .order('tipo');
+
+      if (error) throw error;
+
+      setTargetTicketTypes(ticketTypes || []);
+    } catch (error) {
+      console.error('Error fetching ticket types:', error);
       toast({
         title: "Error",
-        description: "Faltan datos para crear el canje",
+        description: "No se pudieron cargar los tipos de tickets",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Crear solicitud de canje
+  const handleCreateExchange = async () => {
+    if (!selectedTicket || !selectedTargetEvent || !selectedTargetTicketType || !attendeeData) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar el tipo de ticket destino",
         variant: "destructive"
       });
       return;
@@ -233,7 +267,7 @@ const TicketExchange = () => {
         }
       }
 
-      // Crear el canje
+      // Crear el canje con la información del tipo de ticket destino
       const { data: canje, error } = await supabase
         .from('canjes')
         .insert({
@@ -243,7 +277,7 @@ const TicketExchange = () => {
           correo: attendeeData.email,
           evento_original_id: selectedTicket.evento_id,
           tipo_ticket_original_id: selectedTicket.tipo_ticket_id,
-          cantidad: 1,
+          cantidad: ticketQuantity,
           estado: 'pendiente',
           evento_tp_id: selectedTicket.evento?.tp_id,
           ticket_tp_id: selectedTicket.tipo_ticket?.tp_id,
@@ -251,10 +285,10 @@ const TicketExchange = () => {
           evento_destino_id: selectedTargetEvent.id,
           evento_destino_nombre: selectedTargetEvent.nombre,
           evento_destino_tp_id: selectedTargetEvent.tp_id,
-          // Los campos del tipo de ticket destino se dejarán null ya que no se seleccionan en este flujo
-          tipo_ticket_destino_id: null,
-          tipo_ticket_destino_nombre: null,
-          tipo_ticket_destino_tp_id: null
+          // Información del tipo de ticket destino
+          tipo_ticket_destino_id: selectedTargetTicketType.id,
+          tipo_ticket_destino_nombre: selectedTargetTicketType.tipo,
+          tipo_ticket_destino_tp_id: selectedTargetTicketType.tp_id
         })
         .select()
         .single();
@@ -407,6 +441,9 @@ const TicketExchange = () => {
     setSelectedTicket(null);
     setAvailableEvents([]);
     setSelectedTargetEvent(null);
+    setTargetTicketTypes([]);
+    setSelectedTargetTicketType(null);
+    setTicketQuantity(1);
     setEventData(null);
     setTicketTypeData(null);
     setSelectedCanje(null);
@@ -613,7 +650,7 @@ const TicketExchange = () => {
                           ? 'bg-blue-50 border-blue-300' 
                           : 'hover:bg-gray-50 hover:border-gray-300'
                       }`}
-                      onClick={() => setSelectedTargetEvent(event)}
+                      onClick={() => handleSelectTargetEvent(event)}
                     >
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -632,17 +669,64 @@ const TicketExchange = () => {
                     </div>
                   ))}
 
+                  {/* Selector de Tipo de Ticket Destino */}
+                  {selectedTargetEvent && targetTicketTypes.length > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                      <Label className="text-sm font-medium text-blue-900">
+                        Tipo de Ticket Destino
+                      </Label>
+                      <select
+                        value={selectedTargetTicketType?.id || ''}
+                        onChange={(e) => {
+                          const ticketType = targetTicketTypes.find(t => t.id === e.target.value);
+                          setSelectedTargetTicketType(ticketType || null);
+                        }}
+                        className="w-full px-3 py-2 border border-blue-300 bg-white rounded-md text-sm"
+                      >
+                        <option value="">Seleccionar tipo de ticket...</option>
+                        {targetTicketTypes.map((ticketType) => (
+                          <option key={ticketType.id} value={ticketType.id}>
+                            {ticketType.tipo} {ticketType.tp_id ? `(${ticketType.tp_id})` : ''}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Selector de Cantidad */}
+                      {selectedTargetTicketType && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-blue-900">
+                            Cantidad
+                          </Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={ticketQuantity}
+                            onChange={(e) => setTicketQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-full border-blue-300"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex gap-2 mt-4">
                     <Button 
                       variant="outline" 
-                      onClick={() => setStep('tickets')} 
+                      onClick={() => {
+                        setStep('tickets');
+                        setSelectedTargetEvent(null);
+                        setSelectedTargetTicketType(null);
+                        setTargetTicketTypes([]);
+                        setTicketQuantity(1);
+                      }} 
                       className="w-full"
                     >
                       Volver
                     </Button>
                     <Button 
                       onClick={handleCreateExchange}
-                      disabled={!selectedTargetEvent || confirming}
+                      disabled={!selectedTargetEvent || !selectedTargetTicketType || confirming}
                       className="w-full bg-green-500 hover:bg-green-600 text-white"
                     >
                       {confirming ? (
@@ -651,7 +735,7 @@ const TicketExchange = () => {
                           Procesando...
                         </>
                       ) : (
-                        'Solicitar Canje'
+                        `Solicitar Canje (${ticketQuantity})`
                       )}
                     </Button>
                   </div>
