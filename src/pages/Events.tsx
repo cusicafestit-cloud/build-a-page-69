@@ -754,7 +754,9 @@ const Events = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.map((event) => (
+                {events.map((event) => {
+                  const eventTickets = getEventTicketTypes(event.id);
+                  return (
                 <Card key={event.id} className="border-none shadow-lg hover:shadow-xl transition-all">
                   <CardHeader>
                     <div className="flex justify-between items-start">
@@ -776,6 +778,28 @@ const Events = () => {
                           </span>
                         </div>
                       )}
+                      
+                      {/* Mostrar tipos de tickets con límites de canjes */}
+                      {eventTickets.length > 0 && (
+                        <div className="border rounded-md p-2 space-y-1 bg-muted/30">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">Límites de Canjes:</p>
+                          {eventTickets.map((ticket) => (
+                            <div key={ticket.id} className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <div
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: ticket.color }}
+                                />
+                                <span className="font-medium">{ticket.type}</span>
+                              </div>
+                              <Badge variant="outline" className="text-xs h-5">
+                                {ticket.maximo_canjes === 0 ? '∞' : ticket.maximo_canjes}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Canjes habilitados</span>
                         <Switch 
@@ -810,7 +834,8 @@ const Events = () => {
                     </div>
                   </CardContent>
                 </Card>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>
