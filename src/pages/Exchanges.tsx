@@ -513,6 +513,13 @@ const Exchanges = () => {
           .eq('id', ticketType.id)
           .single();
 
+        // Obtener información completa del tipo de ticket destino desde la BD
+        const { data: targetTicketTypeInfo } = await supabase
+          .from('tipos_tickets')
+          .select('id, tipo, tp_id')
+          .eq('id', ticketType.id)
+          .single();
+
         const { error } = await supabase
           .from('canjes')
           .insert({
@@ -534,9 +541,9 @@ const Exchanges = () => {
             evento_destino_nombre: targetEventInfo?.nombre || null,
             evento_destino_tp_id: targetEventInfo?.tp_id || null,
             // Información del tipo de ticket destino
-            tipo_ticket_destino_id: ticketType.id,
-            tipo_ticket_destino_nombre: ticketType.tipo,
-            tipo_ticket_destino_tp_id: ticketType.tp_id || null,
+            tipo_ticket_destino_id: targetTicketTypeInfo?.id || null,
+            tipo_ticket_destino_nombre: targetTicketTypeInfo?.tipo || null,
+            tipo_ticket_destino_tp_id: targetTicketTypeInfo?.tp_id || null,
             notas_admin: null,
             fecha_procesado: null,
             procesado_por: null,
