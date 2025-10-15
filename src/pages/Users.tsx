@@ -154,13 +154,24 @@ const Users = () => {
       // Obtener datos completos del usuario de usuarios_sistema
       const { data: systemUser, error } = await supabase
         .from("usuarios_sistema")
-        .select("id, nombre, email, rol, telefono")
+        .select("id, nombre, email, telefono")
         .eq("id", user.id)
         .single();
 
       if (error) throw error;
 
-      setEditingUser(systemUser);
+      // Determinar el rol principal del usuario desde user_roles
+      let mainRole: "admin" | "manager" | "staff" = "staff";
+      if (user.roles.some(r => r.role_nombre === "admin")) {
+        mainRole = "admin";
+      } else if (user.roles.some(r => r.role_nombre === "manager")) {
+        mainRole = "manager";
+      }
+
+      setEditingUser({
+        ...systemUser,
+        rol: mainRole
+      });
       setEditUserDialogOpen(true);
     } catch (error: any) {
       toast({

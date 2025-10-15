@@ -48,17 +48,57 @@ export const EditUserDialog = ({ user, open, onOpenChange, onSuccess }: EditUser
     
     setLoading(true);
     try {
-      const { error } = await supabase
+      // Actualizar información básica del usuario
+      const { error: updateError } = await supabase
         .from("usuarios_sistema")
         .update({
           nombre: formData.nombre,
           email: formData.email,
-          rol: formData.rol,
           telefono: formData.telefono || null
         })
         .eq("id", user.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Obtener el rol actual del usuario en user_roles
+      const { data: currentUserRoles } = await supabase
+        .from("user_roles")
+        .select("id, role_id, roles(nombre)")
+        .eq("user_id", user.id);
+
+      // Obtener el ID del rol seleccionado
+      const { data: selectedRole } = await supabase
+        .from("roles")
+        .select("id")
+        .eq("nombre", formData.rol)
+        .single();
+
+      if (selectedRole) {
+        // Verificar si ya tiene ese rol
+        const hasRole = currentUserRoles?.some(
+          (ur: any) => ur.roles?.nombre === formData.rol
+        );
+
+        if (!hasRole) {
+          // Eliminar roles antiguos y agregar el nuevo
+          if (currentUserRoles && currentUserRoles.length > 0) {
+            await supabase
+              .from("user_roles")
+              .delete()
+              .eq("user_id", user.id);
+          }
+
+          // Insertar nuevo rol
+          const { error: roleError } = await supabase
+            .from("user_roles")
+            .insert({
+              user_id: user.id,
+              role_id: selectedRole.id
+            });
+
+          if (roleError) throw roleError;
+        }
+      }
 
       toast({
         title: "Usuario actualizado",
