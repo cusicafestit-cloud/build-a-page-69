@@ -50,10 +50,11 @@ const Roles = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [permissions, setPermissions] = useState<{ [roleId: string]: RolePermissions }>({});
+  const [permissions, setPermissions] = useState<RolePermissions>({});
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>("");
 
   useEffect(() => {
     fetchRoles();
@@ -72,21 +73,12 @@ const Roles = () => {
 
       setRoles(data || []);
       
-      // Inicializar permisos desde la base de datos
-      const initialPermissions: { [roleId: string]: RolePermissions } = {};
-      data?.forEach((role) => {
-        const rolePerms: RolePermissions = {};
-        modules.forEach((module) => {
-          rolePerms[module.id] = role.permisos?.[module.id] || {
-            ver: false,
-            crear: false,
-            editar: false,
-            eliminar: false,
-          };
-        });
-        initialPermissions[role.id] = rolePerms;
-      });
-      setPermissions(initialPermissions);
+      // Seleccionar el primer rol (admin) por defecto
+      if (data && data.length > 0) {
+        const adminRole = data.find(r => r.nombre === 'admin') || data[0];
+        setSelectedRoleId(adminRole.id);
+        loadRolePermissions(adminRole);
+      }
     } catch (error: any) {
       console.error("Error fetching roles:", error);
       toast({
@@ -99,42 +91,76 @@ const Roles = () => {
     }
   };
 
+  const loadRolePermissions = (role: Role) => {
+    const rolePerms: RolePermissions = {};
+    modules.forEach((module) => {
+      rolePerms[module.id] = role.permisos?.[module.id] || {
+        ver: role.nombre === 'admin',
+        crear: role.nombre === 'admin',
+        editar: role.nombre === 'admin',
+        eliminar: role.nombre === 'admin',
+      };
+    });
+    setPermissions(rolePerms);
+  };
+
   const handlePermissionChange = (
-    roleId: string,
     moduleId: string,
     action: keyof Permission
   ) => {
+    const currentRole = roles.find(r => r.id === selectedRoleId);
+    if (currentRole?.nombre === 'admin') {
+      toast({
+        title: "No permitido",
+        description: "Los permisos del rol Admin no pueden ser modificados",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setPermissions((prev) => ({
       ...prev,
-      [roleId]: {
-        ...prev[roleId],
-        [moduleId]: {
-          ...prev[roleId][moduleId],
-          [action]: !prev[roleId][moduleId][action],
-        },
+      [moduleId]: {
+        ...prev[moduleId],
+        [action]: !prev[moduleId][action],
       },
     }));
     setHasChanges(true);
   };
 
+  const handleRoleChange = (roleId: string) => {
+    if (hasChanges) {
+      toast({
+        title: "Cambios sin guardar",
+        description: "Por favor guarda los cambios antes de cambiar de rol",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSelectedRoleId(roleId);
+    const role = roles.find(r => r.id === roleId);
+    if (role) {
+      loadRolePermissions(role);
+    }
+  };
+
   const handleSaveChanges = async () => {
     setLoading(true);
     try {
-      // Guardar permisos para cada rol
-      for (const role of roles) {
-        const { error } = await supabase
-          .from("roles")
-          .update({ permisos: permissions[role.id] })
-          .eq("id", role.id);
+      const { error } = await supabase
+        .from("roles")
+        .update({ permisos: permissions })
+        .eq("id", selectedRoleId);
 
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Permisos actualizados",
-        description: "Los cambios en los permisos de roles se han guardado correctamente.",
+        description: "Los cambios en los permisos se han guardado correctamente.",
       });
       setHasChanges(false);
+      await fetchRoles();
     } catch (error: any) {
       console.error("Error saving permissions:", error);
       toast({
@@ -152,28 +178,28 @@ const Roles = () => {
     setEditDialogOpen(true);
   };
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case "admin":
-        return (
-          <Badge className="bg-destructive text-destructive-foreground">
-            <Crown className="w-3 h-3 mr-1" />
-            Admin
-          </Badge>
-        );
-      case "manager":
-        return (
-          <Badge className="bg-warning text-warning-foreground">
-            <Shield className="w-3 h-3 mr-1" />
-            Manager
-          </Badge>
-        );
-      case "staff":
-        return <Badge variant="secondary"><User className="w-3 h-3 mr-1" />Staff</Badge>;
-      default:
-        return null;
+  const getRoleBadge = (nombre: string) => {
+    if (nombre === "admin") {
+      return (
+        <Badge className="bg-destructive text-destructive-foreground">
+          <Crown className="w-3 h-3 mr-1" />
+          Admin
+        </Badge>
+      );
+    } else if (nombre === "manager") {
+      return (
+        <Badge className="bg-warning text-warning-foreground">
+          <Shield className="w-3 h-3 mr-1" />
+          Manager
+        </Badge>
+      );
+    } else if (nombre === "staff") {
+      return <Badge variant="secondary"><User className="w-3 h-3 mr-1" />Staff</Badge>;
     }
+    return <Badge variant="outline">{nombre}</Badge>;
   };
+
+  const currentRole = roles.find(r => r.id === selectedRoleId);
 
   const stats = [
     { title: "Total Módulos", value: modules.length.toString(), icon: Shield },
@@ -242,8 +268,33 @@ const Roles = () => {
 
         {/* Permissions Table */}
         <Card className="border-none shadow-lg">
-          <CardHeader>
-            <CardTitle>Matriz de Permisos por Rol</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Configuración de Permisos</CardTitle>
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium">Seleccionar Rol:</label>
+              <select
+                value={selectedRoleId}
+                onChange={(e) => handleRoleChange(e.target.value)}
+                className="px-4 py-2 rounded-md border bg-background"
+                disabled={loading}
+              >
+                {roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.nombre}
+                  </option>
+                ))}
+              </select>
+              {currentRole && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleEditRole(currentRole)}
+                  title="Editar rol"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -258,112 +309,91 @@ const Roles = () => {
                   Crear Primer Rol
                 </Button>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[200px]">Módulo</TableHead>
-                      {roles.map((role) => (
-                        <TableHead key={role.id} className="text-center" colSpan={5}>
-                          <div className="flex items-center justify-center gap-2">
-                            {getRoleBadge(role.nombre)}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleEditRole(role)}
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                    <TableRow>
-                      <TableHead></TableHead>
-                      {roles.map((role) => (
-                        <React.Fragment key={role.id}>
-                          <TableHead className="text-center text-xs">Ver</TableHead>
-                          <TableHead className="text-center text-xs">Crear</TableHead>
-                          <TableHead className="text-center text-xs">Editar</TableHead>
-                          <TableHead className="text-center text-xs">Eliminar</TableHead>
-                          <TableHead className="w-6"></TableHead>
-                        </React.Fragment>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {modules.map((module) => (
-                      <TableRow key={module.id}>
-                        <TableCell className="font-medium">{module.name}</TableCell>
-                        {roles.map((role) => (
-                          <React.Fragment key={role.id}>
-                            <TableCell className="text-center">
-                              <div className="flex justify-center">
-                                <Switch
-                                  checked={permissions[role.id]?.[module.id]?.ver || false}
-                                  onCheckedChange={() =>
-                                    handlePermissionChange(role.id, module.id, "ver")
-                                  }
-                                  disabled={role.nombre === "admin"}
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex justify-center">
-                                <Switch
-                                  checked={permissions[role.id]?.[module.id]?.crear || false}
-                                  onCheckedChange={() =>
-                                    handlePermissionChange(role.id, module.id, "crear")
-                                  }
-                                  disabled={role.nombre === "admin"}
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex justify-center">
-                                <Switch
-                                  checked={permissions[role.id]?.[module.id]?.editar || false}
-                                  onCheckedChange={() =>
-                                    handlePermissionChange(role.id, module.id, "editar")
-                                  }
-                                  disabled={role.nombre === "admin"}
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex justify-center">
-                                <Switch
-                                  checked={permissions[role.id]?.[module.id]?.eliminar || false}
-                                  onCheckedChange={() =>
-                                    handlePermissionChange(role.id, module.id, "eliminar")
-                                  }
-                                  disabled={role.nombre === "admin"}
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell></TableCell>
-                          </React.Fragment>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+            ) : currentRole ? (
+              <div>
+                <div className="mb-6 flex items-center gap-3">
+                  {getRoleBadge(currentRole.nombre)}
+                  <span className="text-sm text-muted-foreground">
+                    {currentRole.descripcion || "Sin descripción"}
+                  </span>
+                </div>
 
-            {!loading && roles.length > 0 && (
-              <div className="mt-6 p-4 bg-muted rounded-lg">
-                <h4 className="font-semibold mb-2">Notas:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Los permisos del rol <strong>Admin</strong> no pueden ser modificados</li>
-                  <li>• Los roles del sistema no pueden ser eliminados</li>
-                  <li>• Los cambios solo se aplican al guardar haciendo clic en "Guardar Cambios"</li>
-                  <li>• Los usuarios activos con estos roles verán los cambios en su próximo inicio de sesión</li>
-                </ul>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[200px]">Módulo</TableHead>
+                        <TableHead className="text-center">Ver</TableHead>
+                        <TableHead className="text-center">Crear</TableHead>
+                        <TableHead className="text-center">Editar</TableHead>
+                        <TableHead className="text-center">Eliminar</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {modules.map((module) => (
+                        <TableRow key={module.id}>
+                          <TableCell className="font-medium">{module.name}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center">
+                              <Switch
+                                checked={permissions[module.id]?.ver || false}
+                                onCheckedChange={() =>
+                                  handlePermissionChange(module.id, "ver")
+                                }
+                                disabled={currentRole.nombre === "admin"}
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center">
+                              <Switch
+                                checked={permissions[module.id]?.crear || false}
+                                onCheckedChange={() =>
+                                  handlePermissionChange(module.id, "crear")
+                                }
+                                disabled={currentRole.nombre === "admin"}
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center">
+                              <Switch
+                                checked={permissions[module.id]?.editar || false}
+                                onCheckedChange={() =>
+                                  handlePermissionChange(module.id, "editar")
+                                }
+                                disabled={currentRole.nombre === "admin"}
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center">
+                              <Switch
+                                checked={permissions[module.id]?.eliminar || false}
+                                onCheckedChange={() =>
+                                  handlePermissionChange(module.id, "eliminar")
+                                }
+                                disabled={currentRole.nombre === "admin"}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="mt-6 p-4 bg-muted rounded-lg">
+                  <h4 className="font-semibold mb-2">Notas:</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Los permisos del rol <strong>Admin</strong> no pueden ser modificados y tienen acceso completo</li>
+                    <li>• Los roles del sistema no pueden ser eliminados</li>
+                    <li>• Los cambios solo se aplican al guardar haciendo clic en "Guardar Cambios"</li>
+                    <li>• Guarda los cambios antes de cambiar a otro rol</li>
+                  </ul>
+                </div>
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 
