@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserCog, Search, Plus, Shield, User, Crown, Edit, Trash2, Power, Settings2 } from "lucide-react";
+import { UserCog, Search, Plus, Shield, User, Crown, Edit, Trash2, Power, Settings2, Eye } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +23,8 @@ type AuthUser = {
   nombre: string;
   created_at: string;
   last_sign_in_at?: string;
+  rol?: "admin" | "manager" | "staff";
+  telefono?: string;
   roles: Array<{
     id: string;
     role_id: string;
@@ -36,8 +38,12 @@ const Users = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<AuthUser | null>(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
   const [assignRoleDialogOpen, setAssignRoleDialogOpen] = useState(false);
   const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
+  const [viewUserDialogOpen, setViewUserDialogOpen] = useState(false);
+  const [editUserDialogOpen, setEditUserDialogOpen] = useState(false);
+  const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
 
   // Consultar usuarios con roles asignados
   const { data: users = [], isLoading, refetch } = useQuery({
@@ -138,6 +144,28 @@ const Users = () => {
       toast({
         title: "Error",
         description: error.message || "No se pudo remover el rol",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEditUser = async (user: AuthUser) => {
+    try {
+      // Obtener datos completos del usuario de usuarios_sistema
+      const { data: systemUser, error } = await supabase
+        .from("usuarios_sistema")
+        .select("id, nombre, email, rol, telefono")
+        .eq("id", user.id)
+        .single();
+
+      if (error) throw error;
+
+      setEditingUser(systemUser);
+      setEditUserDialogOpen(true);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo cargar la información del usuario",
         variant: "destructive"
       });
     }
@@ -288,23 +316,52 @@ const Users = () => {
                           {new Date(user.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          {user.roles.length < availableRoles.length ? (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               onClick={() => {
                                 setSelectedUser(user);
-                                setAssignRoleDialogOpen(true);
+                                setViewUserDialogOpen(true);
                               }}
+                              title="Ver detalles"
                             >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Asignar Rol
+                              <Eye className="w-4 h-4" />
                             </Button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              Todos los roles asignados
-                            </span>
-                          )}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleEditUser(user)}
+                              title="Editar usuario"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setDeleteUserDialogOpen(true);
+                              }}
+                              title="Eliminar usuario"
+                              className="hover:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            {user.roles.length < availableRoles.length && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setAssignRoleDialogOpen(true);
+                                }}
+                              >
+                                <Plus className="w-4 h-4 mr-1" />
+                                Asignar Rol
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -347,6 +404,74 @@ const Users = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* View User Dialog */}
+        <Dialog open={viewUserDialogOpen} onOpenChange={setViewUserDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Detalles del Usuario</DialogTitle>
+            </DialogHeader>
+            {selectedUser && (
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label className="text-muted-foreground">Nombre</Label>
+                  <p className="font-medium">{selectedUser.nombre}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Email</Label>
+                  <p className="font-medium">{selectedUser.email}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Fecha de Registro</Label>
+                  <p className="font-medium">{new Date(selectedUser.created_at).toLocaleString('es-ES')}</p>
+                </div>
+                {selectedUser.last_sign_in_at && (
+                  <div>
+                    <Label className="text-muted-foreground">Último Login</Label>
+                    <p className="font-medium">{new Date(selectedUser.last_sign_in_at).toLocaleString('es-ES')}</p>
+                  </div>
+                )}
+                <div>
+                  <Label className="text-muted-foreground mb-2">Roles Asignados</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedUser.roles.length === 0 ? (
+                      <Badge variant="outline">Sin roles asignados</Badge>
+                    ) : (
+                      selectedUser.roles.map((role) => (
+                        <div key={role.id}>
+                          {getRoleBadge(role.role_nombre)}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewUserDialogOpen(false)}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <EditUserDialog
+          user={editingUser}
+          open={editUserDialogOpen}
+          onOpenChange={setEditUserDialogOpen}
+          onSuccess={refetch}
+        />
+
+        <DeleteUserDialog
+          user={selectedUser ? {
+            id: selectedUser.id,
+            nombre: selectedUser.nombre,
+            email: selectedUser.email
+          } : null}
+          open={deleteUserDialogOpen}
+          onOpenChange={setDeleteUserDialogOpen}
+          onSuccess={refetch}
+        />
 
         <CreateUserDialog
           open={createUserDialogOpen}
