@@ -348,19 +348,6 @@ const Users = () => {
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
-                            {user.roles.length < availableRoles.length && (
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setAssignRoleDialogOpen(true);
-                                }}
-                              >
-                                <Plus className="w-4 h-4 mr-1" />
-                                Asignar Rol
-                              </Button>
-                            )}
                           </div>
                         </TableCell>
                       </TableRow>
