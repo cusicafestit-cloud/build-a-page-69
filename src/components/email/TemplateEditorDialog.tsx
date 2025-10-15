@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { FileText, Code, Eye, Sparkles, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -439,38 +438,19 @@ export const TemplateEditorDialog = ({ open, onOpenChange, template }: Props) =>
             </div>
 
             {/* Editor de código */}
-            <Tabs defaultValue="html" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="html">
-                  <Code className="w-4 h-4 mr-2" />
-                  HTML
-                </TabsTrigger>
-                <TabsTrigger value="text">Texto Plano</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="html" className="mt-2">
-                <Label htmlFor="html-editor">Contenido HTML *</Label>
-                <Textarea
-                  id="html-editor"
-                  value={formData.contenido_html}
-                  onChange={(e) => setFormData({ ...formData, contenido_html: e.target.value })}
-                  className="h-[300px] font-mono text-sm"
-                  placeholder="<html>...</html>"
-                />
-              </TabsContent>
-              
-              <TabsContent value="text" className="mt-2">
-                <Label htmlFor="text-editor">Contenido Texto Plano</Label>
-                <Textarea
-                  id="text-editor"
-                  value={formData.contenido_texto}
-                  onChange={(e) => setFormData({ ...formData, contenido_texto: e.target.value })}
-                  className="h-[300px]"
-                  placeholder="Versión de texto plano para clientes que no soportan HTML..."
-                  rows={15}
-                />
-              </TabsContent>
-            </Tabs>
+            <div className="w-full space-y-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Code className="w-4 h-4 text-primary" />
+                <Label htmlFor="html-editor" className="text-base font-semibold">Contenido HTML *</Label>
+              </div>
+              <Textarea
+                id="html-editor"
+                value={formData.contenido_html}
+                onChange={(e) => setFormData({ ...formData, contenido_html: e.target.value })}
+                className="h-[300px] font-mono text-sm"
+                placeholder="<html>...</html>"
+              />
+            </div>
           </div>
 
           {/* Panel derecho: Preview */}
