@@ -41,9 +41,15 @@ export const generateImportTemplate = () => {
       '2025-01-15'
     ],
     [],
+    ['⚠️ INSTRUCCIONES IMPORTANTES:'],
     ['COLUMNAS OBLIGATORIAS: Email, Nombre, Apellido, Nombre Evento'],
-    ['Los campos ID Evento e ID Ticket son opcionales. Si no se proporcionan, se usará "Shows" como evento por defecto.'],
-    ['Formato de fechas: YYYY-MM-DD (ejemplo: 2025-01-15)']
+    ['COLUMNAS OPCIONALES: ID Evento, ID Ticket, Teléfono, Documento Identidad, Género, Fecha Nacimiento, Dirección, Sección, Tiketera, Tipo Ticket Nombre, Fecha Compra'],
+    [''],
+    ['📋 NOTAS:'],
+    ['- Los encabezados deben coincidir EXACTAMENTE con los nombres mostrados arriba'],
+    ['- Si no se proporciona ID Evento, se usará "Shows" como evento por defecto'],
+    ['- Formato de fechas: YYYY-MM-DD (ejemplo: 2025-01-15)'],
+    ['- El Email debe ser válido y único para cada asistente']
   ];
   
   // Crear hoja de cálculo

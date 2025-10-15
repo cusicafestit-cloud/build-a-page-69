@@ -140,7 +140,23 @@ export const ImportSection = () => {
 
       if (functionError) {
         console.error("Error validando archivo:", functionError);
-        toast.error(`Error validando ${file.name}: ${functionError.message}`);
+        
+        // Extraer el mensaje de error detallado si está disponible
+        let errorMessage = functionError.message;
+        if (functionError.context?.error) {
+          errorMessage = functionError.context.error;
+        }
+        
+        // Crear un toast más descriptivo para errores de validación
+        toast.error(
+          <div className="space-y-2">
+            <p className="font-semibold">Error al validar {file.name}</p>
+            <p className="text-sm whitespace-pre-wrap">{errorMessage}</p>
+          </div>,
+          {
+            duration: 10000, // 10 segundos para dar tiempo de leer
+          }
+        );
         return;
       }
 
@@ -278,9 +294,13 @@ export const ImportSection = () => {
               <strong>Columnas obligatorias:</strong> Email, Nombre, Apellido, Nombre Evento
             </p>
             <p className="text-xs text-muted-foreground">
-              <strong>Columnas opcionales:</strong> ID Evento, ID Ticket
+              <strong>Columnas opcionales:</strong> ID Evento, ID Ticket, Teléfono, Documento Identidad, Género, Fecha Nacimiento, Dirección, Sección, Tiketera, Tipo Ticket Nombre, Fecha Compra
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-yellow-600 mt-2">
+              ⚠️ <strong>Importante:</strong> Los encabezados de las columnas deben coincidir exactamente con la plantilla. 
+              Si faltan columnas obligatorias, verás un error descriptivo indicando qué falta.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
               Se mostrará una tabla de validación previa donde podrás confirmar el mapeo de eventos y tickets antes de importar.
             </p>
             

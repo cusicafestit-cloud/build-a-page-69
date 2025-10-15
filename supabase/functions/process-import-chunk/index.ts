@@ -114,7 +114,25 @@ serve(async (req) => {
     const camposFaltantes = camposObligatorios.filter(campo => !columnMapping[campo])
     
     if (camposFaltantes.length > 0) {
-      throw new Error(`Columnas obligatorias no detectadas: ${camposFaltantes.join(', ')}. Verifica los encabezados del archivo.`)
+      const headersEncontrados = Object.keys(chunkRows[0] || {})
+      const columnasEsperadas = {
+        email: 'Email, E-mail, Correo',
+        nombre: 'Nombre, First Name',
+        apellido: 'Apellido, Last Name',
+        evento_nombre: 'Nombre Evento, Evento, Event, Show'
+      }
+      
+      const detallesError = camposFaltantes.map(campo => {
+        return `\n  - ${campo}: Se esperaba una columna como: ${columnasEsperadas[campo as keyof typeof columnasEsperadas]}`
+      }).join('')
+      
+      throw new Error(
+        `❌ ERROR DE VALIDACIÓN: Columnas obligatorias no detectadas en el archivo.\n\n` +
+        `Columnas faltantes:${detallesError}\n\n` +
+        `Columnas encontradas en el archivo:\n  ${headersEncontrados.join(', ')}\n\n` +
+        `💡 Solución: Verifica que tu archivo Excel tenga los encabezados correctos. ` +
+        `Descarga la plantilla oficial desde la interfaz para asegurar el formato correcto.`
+      )
     }
     
     // 9. Procesar registros
@@ -706,7 +724,7 @@ function autoMapColumns(headers: string[]): Record<string, string[]> {
     telefono: ['phone', 'phone number', 'tel', 'telefono', 'teléfono', 'mobile', 'celular'],
     nombre: ['nombre', 'first name', 'client first name', 'given name', 'primer nombre'],
     apellido: ['apellido', 'last name', 'client last name', 'family name', 'surname'],
-    evento_nombre: ['evento', 'nombre evento', 'event', 'event name', 'show', 'concierto', 'espectaculo'],
+    evento_nombre: ['nombre evento', 'nombreevento', 'evento', 'event', 'event name', 'show', 'concierto', 'espectaculo'],
     id_evento: ['id evento', 'evento id', 'event id', 'id_evento'],
     id_ticket: ['id ticket', 'ticket id', 'id_ticket', 'tipo ticket id'],
     documento_identidad: ['document', 'document id', 'documento', 'documento id', 'dni', 'cedula', 'cédula', 'id number', 'identification'],
