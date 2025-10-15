@@ -39,6 +39,8 @@ type Attendee = {
   telefono: string;
   documentoIdentidad?: string;
   fechaNacimiento?: string;
+  genero?: string;
+  direccion?: string;
   asistencias: Asistencia[];
 };
 
@@ -77,6 +79,8 @@ const Attendees = () => {
     telefono: "",
     documentoIdentidad: "",
     fechaNacimiento: "",
+    genero: "",
+    direccion: "",
     eventosSeleccionados: [] as EventoConTickets[]
   });
 
@@ -87,6 +91,8 @@ const Attendees = () => {
     telefono: "",
     documentoIdentidad: "",
     fechaNacimiento: "",
+    genero: "",
+    direccion: "",
     asistenciasActuales: [] as Asistencia[],
     nuevasAsistencias: [] as EventoConTickets[]
   });
@@ -142,7 +148,9 @@ const Attendees = () => {
           email,
           telefono,
           documento_identidad,
-          fecha_nacimiento
+          fecha_nacimiento,
+          genero,
+          direccion
         `)
         .order('created_at', { ascending: false });
       
@@ -174,6 +182,8 @@ const Attendees = () => {
             telefono: asistente.telefono,
             documentoIdentidad: asistente.documento_identidad,
             fechaNacimiento: asistente.fecha_nacimiento,
+            genero: asistente.genero,
+            direccion: asistente.direccion,
             asistencias: (asistencias || []).map((a: any) => ({
               id: a.id,
               evento: a.eventos?.nombre || 'Sin evento',
@@ -288,7 +298,9 @@ const Attendees = () => {
             email: newAttendee.email.trim().toLowerCase(),
             telefono: newAttendee.telefono.trim(),
             documento_identidad: newAttendee.documentoIdentidad.trim() || null,
-            fecha_nacimiento: newAttendee.fechaNacimiento || null
+            fecha_nacimiento: newAttendee.fechaNacimiento || null,
+            genero: newAttendee.genero.trim() || null,
+            direccion: newAttendee.direccion.trim() || null
           })
           .select()
           .single();
@@ -341,6 +353,8 @@ const Attendees = () => {
         telefono: "",
         documentoIdentidad: "",
         fechaNacimiento: "",
+        genero: "",
+        direccion: "",
         eventosSeleccionados: []
       });
       refetch();
@@ -368,6 +382,8 @@ const Attendees = () => {
       telefono: attendee.telefono,
       documentoIdentidad: attendee.documentoIdentidad || "",
       fechaNacimiento: attendee.fechaNacimiento || "",
+      genero: attendee.genero || "",
+      direccion: attendee.direccion || "",
       asistenciasActuales: attendee.asistencias,
       nuevasAsistencias: []
     });
@@ -444,7 +460,9 @@ const Attendees = () => {
           apellido: editAttendee.apellido.trim(),
           telefono: editAttendee.telefono.trim(),
           documento_identidad: editAttendee.documentoIdentidad.trim() || null,
-          fecha_nacimiento: editAttendee.fechaNacimiento || null
+          fecha_nacimiento: editAttendee.fechaNacimiento || null,
+          genero: editAttendee.genero.trim() || null,
+          direccion: editAttendee.direccion.trim() || null
         })
         .eq('id', selectedAttendee.id);
 
@@ -828,6 +846,35 @@ const Attendees = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="genero">Género</Label>
+                    <Select
+                      value={newAttendee.genero}
+                      onValueChange={(value) => setNewAttendee({ ...newAttendee, genero: value })}
+                    >
+                      <SelectTrigger id="genero">
+                        <SelectValue placeholder="Seleccionar género" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="masculino">Masculino</SelectItem>
+                        <SelectItem value="femenino">Femenino</SelectItem>
+                        <SelectItem value="otro">Otro</SelectItem>
+                        <SelectItem value="prefiero_no_decir">Prefiero no decir</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="direccion">Dirección</Label>
+                    <Input
+                      id="direccion"
+                      value={newAttendee.direccion}
+                      onChange={(e) => setNewAttendee({ ...newAttendee, direccion: e.target.value })}
+                      placeholder="Calle 123 #45-67"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-3">
                   <Label>Eventos y Entradas * (selecciona al menos uno)</Label>
                   <div className="border rounded-lg p-4 space-y-2 max-h-60 overflow-y-auto">
@@ -1159,6 +1206,20 @@ const Attendees = () => {
                     </div>
                   )}
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedAttendee.genero && (
+                    <div>
+                      <Label className="text-muted-foreground">Género</Label>
+                      <p className="font-medium">{selectedAttendee.genero}</p>
+                    </div>
+                  )}
+                  {selectedAttendee.direccion && (
+                    <div>
+                      <Label className="text-muted-foreground">Dirección</Label>
+                      <p className="font-medium">{selectedAttendee.direccion}</p>
+                    </div>
+                  )}
+                </div>
                 <div>
                   <Label className="text-muted-foreground mb-2">Eventos Asistidos ({selectedAttendee.asistencias.length})</Label>
                   <div className="space-y-2 mt-2">
@@ -1235,6 +1296,56 @@ const Attendees = () => {
                     id="edit-telefono"
                     value={editAttendee.telefono}
                     onChange={(e) => setEditAttendee({ ...editAttendee, telefono: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-documento">Documento de Identidad</Label>
+                  <Input
+                    id="edit-documento"
+                    value={editAttendee.documentoIdentidad}
+                    onChange={(e) => setEditAttendee({ ...editAttendee, documentoIdentidad: e.target.value })}
+                    placeholder="12345678"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-fechaNacimiento">Fecha de Nacimiento</Label>
+                  <Input
+                    id="edit-fechaNacimiento"
+                    type="date"
+                    value={editAttendee.fechaNacimiento}
+                    onChange={(e) => setEditAttendee({ ...editAttendee, fechaNacimiento: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-genero">Género</Label>
+                  <Select
+                    value={editAttendee.genero}
+                    onValueChange={(value) => setEditAttendee({ ...editAttendee, genero: value })}
+                  >
+                    <SelectTrigger id="edit-genero">
+                      <SelectValue placeholder="Seleccionar género" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="masculino">Masculino</SelectItem>
+                      <SelectItem value="femenino">Femenino</SelectItem>
+                      <SelectItem value="otro">Otro</SelectItem>
+                      <SelectItem value="prefiero_no_decir">Prefiero no decir</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-direccion">Dirección</Label>
+                  <Input
+                    id="edit-direccion"
+                    value={editAttendee.direccion}
+                    onChange={(e) => setEditAttendee({ ...editAttendee, direccion: e.target.value })}
+                    placeholder="Calle 123 #45-67"
                   />
                 </div>
               </div>
