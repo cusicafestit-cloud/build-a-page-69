@@ -25,6 +25,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const ImportSection = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -35,16 +42,17 @@ export const ImportSection = () => {
   const [isConfirming, setIsConfirming] = useState(false);
   const [selectedImport, setSelectedImport] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const queryClient = useQueryClient();
 
   const { data: importaciones, isLoading } = useQuery({
-    queryKey: ["importaciones"],
+    queryKey: ["importaciones", rowsPerPage],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("importaciones_queue")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(rowsPerPage);
 
       if (error) throw error;
       return data;
@@ -370,7 +378,27 @@ export const ImportSection = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Historial de Importaciones</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Historial de Importaciones</CardTitle>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="rows-per-page" className="text-sm text-muted-foreground">
+                Filas por página:
+              </Label>
+              <Select
+                value={rowsPerPage.toString()}
+                onValueChange={(value) => setRowsPerPage(Number(value))}
+              >
+                <SelectTrigger id="rows-per-page" className="w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
