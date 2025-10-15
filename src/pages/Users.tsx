@@ -291,16 +291,8 @@ const Users = () => {
                               <Badge variant="outline" className="text-xs">Sin roles</Badge>
                             ) : (
                               user.roles.map((role) => (
-                                <div key={role.id} className="flex items-center gap-1">
+                                <div key={role.id}>
                                   {getRoleBadge(role.role_nombre)}
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-5 w-5"
-                                    onClick={() => handleRemoveRole(role.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
                                 </div>
                               ))
                             )}
