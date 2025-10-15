@@ -11,7 +11,7 @@ type SystemUser = {
   id: string;
   nombre: string;
   email: string;
-  rol: "admin" | "manager" | "staff";
+  rol: "admin" | "moderator" | "user";
   telefono?: string;
 };
 
@@ -28,7 +28,7 @@ export const EditUserDialog = ({ user, open, onOpenChange, onSuccess }: EditUser
   const [formData, setFormData] = useState({
     nombre: "",
     email: "",
-    rol: "staff" as "admin" | "manager" | "staff",
+    rol: "user" as "admin" | "moderator" | "user",
     telefono: ""
   });
 
@@ -63,7 +63,7 @@ export const EditUserDialog = ({ user, open, onOpenChange, onSuccess }: EditUser
       // Obtener el rol actual del usuario en user_roles
       const { data: currentUserRoles } = await supabase
         .from("user_roles")
-        .select("id, role_id, roles(nombre)")
+        .select("id, role_id, roles!user_roles_role_id_fkey(nombre)")
         .eq("user_id", user.id);
 
       // Obtener el ID del rol seleccionado
@@ -71,7 +71,7 @@ export const EditUserDialog = ({ user, open, onOpenChange, onSuccess }: EditUser
         .from("roles")
         .select("id")
         .eq("nombre", formData.rol)
-        .single();
+        .maybeSingle();
 
       if (selectedRole) {
         // Verificar si ya tiene ese rol
@@ -166,13 +166,13 @@ export const EditUserDialog = ({ user, open, onOpenChange, onSuccess }: EditUser
             <Label htmlFor="rol" className="text-right">
               Rol
             </Label>
-            <Select value={formData.rol} onValueChange={(value: "admin" | "manager" | "staff") => setFormData({ ...formData, rol: value })}>
+            <Select value={formData.rol} onValueChange={(value: "admin" | "moderator" | "user") => setFormData({ ...formData, rol: value })}>
               <SelectTrigger className="col-span-3">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="staff">Staff</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="user">Usuario</SelectItem>
+                <SelectItem value="moderator">Moderador</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
               </SelectContent>
             </Select>

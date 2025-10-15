@@ -23,7 +23,7 @@ type AuthUser = {
   nombre: string;
   created_at: string;
   last_sign_in_at?: string;
-  rol?: "admin" | "manager" | "staff";
+  rol?: "admin" | "moderator" | "user";
   telefono?: string;
   roles: Array<{
     id: string;
@@ -161,11 +161,11 @@ const Users = () => {
       if (error) throw error;
 
       // Determinar el rol principal del usuario desde user_roles
-      let mainRole: "admin" | "manager" | "staff" = "staff";
+      let mainRole: "admin" | "moderator" | "user" = "user";
       if (user.roles.some(r => r.role_nombre === "admin")) {
         mainRole = "admin";
-      } else if (user.roles.some(r => r.role_nombre === "manager")) {
-        mainRole = "manager";
+      } else if (user.roles.some(r => r.role_nombre === "moderator")) {
+        mainRole = "moderator";
       }
 
       setEditingUser({
