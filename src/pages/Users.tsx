@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 type AuthUser = {
   id: string;
   email: string;
+  nombre: string;
   created_at: string;
   last_sign_in_at?: string;
   roles: Array<{
@@ -47,6 +48,7 @@ const Users = () => {
       return (data || []).map((row: any) => ({
         id: row.user_id,
         email: row.user_email,
+        nombre: row.user_nombre,
         created_at: row.user_created_at,
         roles: row.roles || [],
       })) as AuthUser[];
@@ -69,6 +71,7 @@ const Users = () => {
 
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.roles.some(r => r.role_nombre.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -211,7 +214,7 @@ const Users = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
+                    <TableHead>Usuario</TableHead>
                     <TableHead>Roles Asignados</TableHead>
                     <TableHead>Último Login</TableHead>
                     <TableHead>Fecha Registro</TableHead>
@@ -241,8 +244,8 @@ const Users = () => {
                     filteredUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
-                          <div className="font-medium">{user.email}</div>
-                          <div className="text-xs text-muted-foreground">ID: {user.id.slice(0, 8)}...</div>
+                          <div className="font-medium">{user.nombre}</div>
+                          <div className="text-xs text-muted-foreground">{user.email}</div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
