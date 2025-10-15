@@ -273,6 +273,41 @@ const Events = () => {
   // Delete event mutation
   const deleteEventMutation = useMutation({
     mutationFn: async (eventId: string) => {
+      // Primero, verificar si hay asistencias asociadas
+      const { data: asistencias, error: asistenciasError } = await supabase
+        .from('asistencias')
+        .select('id')
+        .eq('evento_id', eventId)
+        .limit(1);
+
+      if (asistenciasError) throw asistenciasError;
+
+      if (asistencias && asistencias.length > 0) {
+        throw new Error("No se puede eliminar el evento porque tiene asistencias registradas. Primero elimina o migra las asistencias.");
+      }
+
+      // Verificar si hay canjes asociados
+      const { data: canjes, error: canjesError } = await supabase
+        .from('canjes')
+        .select('id')
+        .eq('evento_original_id', eventId)
+        .limit(1);
+
+      if (canjesError) throw canjesError;
+
+      if (canjes && canjes.length > 0) {
+        throw new Error("No se puede eliminar el evento porque tiene canjes asociados.");
+      }
+
+      // Desvincular tipos de tickets asociados (en lugar de eliminarlos)
+      const { error: unlinkError } = await supabase
+        .from('tipos_tickets')
+        .update({ evento_id: null })
+        .eq('evento_id', eventId);
+
+      if (unlinkError) throw unlinkError;
+
+      // Ahora eliminar el evento
       const { error } = await supabase
         .from('eventos')
         .delete()
@@ -282,16 +317,18 @@ const Events = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["ticket_types"] });
       toast({
         title: "Evento eliminado",
-        description: "El evento ha sido eliminado exitosamente.",
+        description: "El evento ha sido eliminado exitosamente. Los tipos de tickets asociados han sido desvinculados.",
         variant: "destructive",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Error deleting event:", error);
       toast({
-        title: "Error",
-        description: "No se pudo eliminar el evento. Intenta nuevamente.",
+        title: "Error al eliminar evento",
+        description: error.message || "No se pudo eliminar el evento. Intenta nuevamente.",
         variant: "destructive",
       });
     },
