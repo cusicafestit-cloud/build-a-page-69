@@ -905,7 +905,7 @@ const TicketExchange = () => {
                 </div>
 
                 <Button onClick={handleReset} variant="outline" className="w-full">
-                  Realizar Otro Canje
+                  Aceptar
                 </Button>
               </CardContent>
             </Card>}
