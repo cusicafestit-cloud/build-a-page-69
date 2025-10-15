@@ -40,45 +40,16 @@ const Users = () => {
   const { data: users = [], isLoading, refetch } = useQuery({
     queryKey: ["users-with-roles"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select(`
-          id,
-          user_id,
-          created_at,
-          roles:role_id (
-            id,
-            nombre,
-            descripcion
-          )
-        `)
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.rpc("get_users_with_roles");
 
       if (error) throw error;
 
-      // Agrupar por usuario
-      const usersMap = new Map<string, AuthUser>();
-      
-      data?.forEach((ur) => {
-        if (!usersMap.has(ur.user_id)) {
-          usersMap.set(ur.user_id, {
-            id: ur.user_id,
-            email: ur.user_id, // Mostraremos el ID ya que no podemos acceder a auth.users
-            created_at: ur.created_at,
-            roles: [],
-          });
-        }
-        
-        const user = usersMap.get(ur.user_id)!;
-        user.roles.push({
-          id: ur.id,
-          role_id: (ur.roles as any)?.id || "",
-          role_nombre: (ur.roles as any)?.nombre || "",
-          role_descripcion: (ur.roles as any)?.descripcion || "",
-        });
-      });
-      
-      return Array.from(usersMap.values());
+      return (data || []).map((row: any) => ({
+        id: row.user_id,
+        email: row.user_email,
+        created_at: row.user_created_at,
+        roles: row.roles || [],
+      })) as AuthUser[];
     },
   });
 

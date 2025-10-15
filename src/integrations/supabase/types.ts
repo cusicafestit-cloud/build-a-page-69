@@ -1723,6 +1723,15 @@ export type Database = {
         Args: { query_text: string }
         Returns: Json
       }
+      get_users_with_roles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          roles: Json
+          user_created_at: string
+          user_email: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args:
           | { _role: Database["public"]["Enums"]["app_role"]; _user_id: string }
