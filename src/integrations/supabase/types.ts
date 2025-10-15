@@ -1348,6 +1348,39 @@ export type Database = {
           },
         ]
       }
+      roles: {
+        Row: {
+          activo: boolean | null
+          created_at: string | null
+          descripcion: string | null
+          es_sistema: boolean | null
+          id: string
+          nombre: string
+          permisos: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string | null
+          descripcion?: string | null
+          es_sistema?: boolean | null
+          id?: string
+          nombre: string
+          permisos?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string | null
+          descripcion?: string | null
+          es_sistema?: boolean | null
+          id?: string
+          nombre?: string
+          permisos?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       suscriptores_email: {
         Row: {
           confirmado: boolean | null
@@ -1465,6 +1498,38 @@ export type Database = {
         ]
       }
       user_roles: {
+        Row: {
+          asignado_por: string | null
+          created_at: string | null
+          id: string
+          role_id: string
+          user_id: string
+        }
+        Insert: {
+          asignado_por?: string | null
+          created_at?: string | null
+          id?: string
+          role_id: string
+          user_id: string
+        }
+        Update: {
+          asignado_por?: string | null
+          created_at?: string | null
+          id?: string
+          role_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_new_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles_backup_old: {
         Row: {
           created_at: string | null
           id: string
@@ -1659,10 +1724,9 @@ export type Database = {
         Returns: Json
       }
       has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
+        Args:
+          | { _role: Database["public"]["Enums"]["app_role"]; _user_id: string }
+          | { _role_name: string; _user_id: string }
         Returns: boolean
       }
       is_admin: {
