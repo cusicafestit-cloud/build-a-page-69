@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EditUserDialog } from "@/components/users/EditUserDialog";
 import { DeleteUserDialog } from "@/components/users/DeleteUserDialog";
+import { CreateUserDialog } from "@/components/users/CreateUserDialog";
 import { useNavigate } from "react-router-dom";
 
 type AuthUser = {
@@ -36,6 +37,7 @@ const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<AuthUser | null>(null);
   const [assignRoleDialogOpen, setAssignRoleDialogOpen] = useState(false);
+  const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
 
   // Consultar usuarios con roles asignados
   const { data: users = [], isLoading, refetch } = useQuery({
@@ -161,14 +163,23 @@ const Users = () => {
               Administra los usuarios registrados y sus roles asignados
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => navigate("/roles")}
-            className="border-primary/20 hover:bg-primary/10"
-          >
-            <Settings2 className="w-4 h-4 mr-2" />
-            Gestión de Roles
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setCreateUserDialogOpen(true)}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Usuario
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/roles")}
+              className="border-primary/20 hover:bg-primary/10"
+            >
+              <Settings2 className="w-4 h-4 mr-2" />
+              Gestión de Roles
+            </Button>
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -304,7 +315,7 @@ const Users = () => {
             <DialogHeader>
               <DialogTitle>Asignar Rol</DialogTitle>
               <DialogDescription>
-                Selecciona un rol para asignar a {selectedUser?.email}
+                Selecciona un rol para asignar a {selectedUser?.nombre || selectedUser?.email}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -331,6 +342,12 @@ const Users = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        <CreateUserDialog
+          open={createUserDialogOpen}
+          onOpenChange={setCreateUserDialogOpen}
+          onSuccess={refetch}
+        />
       </div>
     </Layout>
   );
