@@ -17,6 +17,7 @@ import {
   X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { UserProfileDropdown } from "@/components/UserProfileDropdown";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -47,14 +48,17 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <h1 className="text-lg font-bold text-sidebar-foreground">Cusica</h1>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-sidebar-foreground"
-        >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          <UserProfileDropdown />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="text-sidebar-foreground"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </Button>
+        </div>
       </div>
 
       {/* Sidebar - Desktop */}
@@ -131,8 +135,15 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
       )}
 
+      {/* Desktop Header */}
+      <div className="hidden lg:block fixed top-0 right-0 left-64 h-16 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border z-40">
+        <div className="flex items-center justify-end h-full px-6">
+          <UserProfileDropdown />
+        </div>
+      </div>
+
       {/* Main content */}
-      <main className="flex-1 lg:ml-64 pt-16 lg:pt-0 w-full">
+      <main className="flex-1 lg:ml-64 pt-16 w-full">
         {children}
       </main>
     </div>
