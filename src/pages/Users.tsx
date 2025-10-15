@@ -16,135 +16,153 @@ import { EditUserDialog } from "@/components/users/EditUserDialog";
 import { DeleteUserDialog } from "@/components/users/DeleteUserDialog";
 import { useNavigate } from "react-router-dom";
 
-type SystemUser = {
+type AuthUser = {
   id: string;
-  nombre: string;
   email: string;
-  rol: "admin" | "manager" | "staff";
-  estado: "activo" | "inactivo";
-  ultimo_login?: string;
-  telefono?: string;
   created_at: string;
+  last_sign_in_at?: string;
+  roles: Array<{
+    id: string;
+    role_id: string;
+    role_nombre: string;
+    role_descripcion?: string;
+  }>;
 };
 
 const Users = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [isNewUserOpen, setIsNewUserOpen] = useState(false);
-  const [editUser, setEditUser] = useState<SystemUser | null>(null);
-  const [deleteUser, setDeleteUser] = useState<SystemUser | null>(null);
-  const [newUser, setNewUser] = useState<{
-    nombre: string;
-    email: string;
-    rol: "admin" | "manager" | "staff";
-    password: string;
-    telefono: string;
-  }>({
-    nombre: "",
-    email: "",
-    rol: "staff",
-    password: "",
-    telefono: ""
-  });
+  const [selectedUser, setSelectedUser] = useState<AuthUser | null>(null);
+  const [assignRoleDialogOpen, setAssignRoleDialogOpen] = useState(false);
 
+  // Consultar usuarios con roles asignados
   const { data: users = [], isLoading, refetch } = useQuery({
-    queryKey: ["system-users"],
+    queryKey: ["users-with-roles"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("usuarios_sistema")
-        .select("*")
+        .from("user_roles")
+        .select(`
+          id,
+          user_id,
+          created_at,
+          roles:role_id (
+            id,
+            nombre,
+            descripcion
+          )
+        `)
         .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // Agrupar por usuario
+      const usersMap = new Map<string, AuthUser>();
+      
+      data?.forEach((ur) => {
+        if (!usersMap.has(ur.user_id)) {
+          usersMap.set(ur.user_id, {
+            id: ur.user_id,
+            email: ur.user_id, // Mostraremos el ID ya que no podemos acceder a auth.users
+            created_at: ur.created_at,
+            roles: [],
+          });
+        }
+        
+        const user = usersMap.get(ur.user_id)!;
+        user.roles.push({
+          id: ur.id,
+          role_id: (ur.roles as any)?.id || "",
+          role_nombre: (ur.roles as any)?.nombre || "",
+          role_descripcion: (ur.roles as any)?.descripcion || "",
+        });
+      });
+      
+      return Array.from(usersMap.values());
+    },
+  });
+
+  const { data: availableRoles = [] } = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("roles")
+        .select("*")
+        .eq("activo", true)
+        .order("nombre");
       
       if (error) throw error;
-      return (data || []) as SystemUser[];
+      return data || [];
     },
   });
 
   const filteredUsers = users.filter(user =>
-    user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.rol.toLowerCase().includes(searchTerm.toLowerCase())
+    user.roles.some(r => r.role_nombre.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
+  const getRoleBadge = (roleName: string) => {
+    switch (roleName.toLowerCase()) {
       case "admin":
         return <Badge className="bg-destructive text-destructive-foreground"><Crown className="w-3 h-3 mr-1" />Admin</Badge>;
+      case "moderator":
       case "manager":
-        return <Badge className="bg-warning text-warning-foreground"><Shield className="w-3 h-3 mr-1" />Manager</Badge>;
+        return <Badge className="bg-warning text-warning-foreground"><Shield className="w-3 h-3 mr-1" />{roleName}</Badge>;
+      case "user":
       case "staff":
-        return <Badge variant="secondary"><User className="w-3 h-3 mr-1" />Staff</Badge>;
+        return <Badge variant="secondary"><User className="w-3 h-3 mr-1" />{roleName}</Badge>;
       default:
-        return <Badge variant="outline">{role}</Badge>;
+        return <Badge variant="outline">{roleName}</Badge>;
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    return status === "active" 
-      ? <Badge className="bg-success text-success-foreground">Activo</Badge>
-      : <Badge variant="secondary">Inactivo</Badge>;
-  };
-
-  const handleCreateUser = async () => {
+  const handleAssignRole = async (userId: string, roleId: string) => {
     try {
       const { error } = await supabase
-        .from("usuarios_sistema")
+        .from("user_roles")
         .insert({
-          nombre: newUser.nombre,
-          email: newUser.email,
-          rol: newUser.rol,
-          password_hash: newUser.password, // En producción, esto debería hashearse
-          telefono: newUser.telefono || null,
-          estado: "activo"
+          user_id: userId,
+          role_id: roleId,
+          asignado_por: (await supabase.auth.getUser()).data.user?.id,
         });
 
       if (error) throw error;
 
       toast({
-        title: "Usuario creado",
-        description: `El usuario ${newUser.nombre} ha sido creado exitosamente.`,
+        title: "Rol asignado",
+        description: "El rol ha sido asignado exitosamente",
       });
       
       refetch();
-      setIsNewUserOpen(false);
-      setNewUser({
-        nombre: "",
-        email: "",
-        rol: "staff",
-        password: "",
-        telefono: ""
-      });
+      setAssignRoleDialogOpen(false);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear el usuario",
+        description: error.message || "No se pudo asignar el rol",
         variant: "destructive"
       });
     }
   };
 
-  const handleToggleStatus = async (user: SystemUser) => {
-    const newStatus = user.estado === "activo" ? "inactivo" : "activo";
-    
+  const handleRemoveRole = async (userRoleId: string) => {
     try {
       const { error } = await supabase
-        .from("usuarios_sistema")
-        .update({ estado: newStatus })
-        .eq("id", user.id);
+        .from("user_roles")
+        .delete()
+        .eq("id", userRoleId);
 
       if (error) throw error;
 
       toast({
-        title: "Estado actualizado",
-        description: `El usuario ${user.nombre} ahora está ${newStatus}`,
+        title: "Rol removido",
+        description: "El rol ha sido removido exitosamente",
       });
       
       refetch();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "No se pudo actualizar el estado",
+        description: error.message || "No se pudo remover el rol",
         variant: "destructive"
       });
     }
@@ -152,9 +170,9 @@ const Users = () => {
 
   const stats = [
     { title: "Total Usuarios", value: users.length.toString(), icon: UserCog },
-    { title: "Administradores", value: users.filter(u => u.rol === "admin").length.toString(), icon: Crown },
-    { title: "Managers", value: users.filter(u => u.rol === "manager").length.toString(), icon: Shield },
-    { title: "Staff", value: users.filter(u => u.rol === "staff").length.toString(), icon: User },
+    { title: "Con Rol Admin", value: users.filter(u => u.roles.some(r => r.role_nombre === "admin")).length.toString(), icon: Crown },
+    { title: "Con Roles Asignados", value: users.filter(u => u.roles.length > 0).length.toString(), icon: Shield },
+    { title: "Sin Roles", value: users.filter(u => u.roles.length === 0).length.toString(), icon: User },
   ];
 
   return (
@@ -163,104 +181,20 @@ const Users = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Gestión de Usuarios
+              Gestión de Usuarios y Roles
             </h1>
             <p className="text-muted-foreground mt-1">
-              Administra los usuarios del sistema y sus permisos
+              Administra los usuarios registrados y sus roles asignados
             </p>
           </div>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => navigate("/roles")}
-              className="border-primary/20 hover:bg-primary/10"
-            >
-              <Settings2 className="w-4 h-4 mr-2" />
-              Gestión de Roles
-            </Button>
-            <Dialog open={isNewUserOpen} onOpenChange={setIsNewUserOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
-                <Plus className="w-4 h-4 mr-2" />
-                Nuevo Usuario
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Crear Nuevo Usuario</DialogTitle>
-                <DialogDescription>
-                  Completa los detalles del nuevo usuario del sistema.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Nombre
-                  </Label>
-                  <Input
-                    id="nombre"
-                    value={newUser.nombre}
-                    onChange={(e) => setNewUser({ ...newUser, nombre: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="telefono" className="text-right">
-                    Teléfono
-                  </Label>
-                  <Input
-                    id="telefono"
-                    value={newUser.telefono}
-                    onChange={(e) => setNewUser({ ...newUser, telefono: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="rol" className="text-right">
-                    Rol
-                  </Label>
-                  <Select value={newUser.rol} onValueChange={(value: "admin" | "manager" | "staff") => setNewUser({ ...newUser, rol: value })}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="password" className="text-right">
-                    Contraseña
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={newUser.password}
-                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleCreateUser}>Crear Usuario</Button>
-              </DialogFooter>
-            </DialogContent>
-            </Dialog>
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/roles")}
+            className="border-primary/20 hover:bg-primary/10"
+          >
+            <Settings2 className="w-4 h-4 mr-2" />
+            Gestión de Roles
+          </Button>
         </div>
 
         {/* Stats Grid */}
@@ -306,25 +240,24 @@ const Users = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Usuario</TableHead>
-                    <TableHead>Rol</TableHead>
-                    <TableHead>Estado</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Roles Asignados</TableHead>
                     <TableHead>Último Login</TableHead>
-                    <TableHead>Fecha Creación</TableHead>
+                    <TableHead>Fecha Registro</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={5} className="text-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
                         <div className="text-muted-foreground">Cargando usuarios...</div>
                       </TableCell>
                     </TableRow>
                   ) : filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={5} className="text-center py-8">
                         <div className="text-muted-foreground">
                           {searchTerm 
                             ? "No se encontraron usuarios con los filtros aplicados"
@@ -337,16 +270,33 @@ const Users = () => {
                     filteredUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
-                          <div>
-                            <div className="font-medium">{user.nombre}</div>
-                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                          <div className="font-medium">{user.email}</div>
+                          <div className="text-xs text-muted-foreground">ID: {user.id.slice(0, 8)}...</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {user.roles.length === 0 ? (
+                              <Badge variant="outline" className="text-xs">Sin roles</Badge>
+                            ) : (
+                              user.roles.map((role) => (
+                                <div key={role.id} className="flex items-center gap-1">
+                                  {getRoleBadge(role.role_nombre)}
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-5 w-5"
+                                    onClick={() => handleRemoveRole(role.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))
+                            )}
                           </div>
                         </TableCell>
-                        <TableCell>{getRoleBadge(user.rol)}</TableCell>
-                        <TableCell>{getStatusBadge(user.estado)}</TableCell>
                         <TableCell>
-                          {user.ultimo_login 
-                            ? new Date(user.ultimo_login).toLocaleDateString()
+                          {user.last_sign_in_at 
+                            ? new Date(user.last_sign_in_at).toLocaleDateString()
                             : "Nunca"
                           }
                         </TableCell>
@@ -354,36 +304,17 @@ const Users = () => {
                           {new Date(user.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => setEditUser(user)}
-                            >
-                              <Edit className="w-4 h-4 mr-1" />
-                              Editar
-                            </Button>
-                            {user.rol !== "admin" && (
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleToggleStatus(user)}
-                              >
-                                <Power className="w-4 h-4 mr-1" />
-                                {user.estado === "activo" ? "Desactivar" : "Activar"}
-                              </Button>
-                            )}
-                            {user.rol !== "admin" && (
-                              <Button 
-                                size="sm" 
-                                variant="destructive"
-                                onClick={() => setDeleteUser(user)}
-                              >
-                                <Trash2 className="w-4 h-4 mr-1" />
-                                Eliminar
-                              </Button>
-                            )}
-                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setAssignRoleDialogOpen(true);
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Asignar Rol
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -394,19 +325,38 @@ const Users = () => {
           </CardContent>
         </Card>
 
-        <EditUserDialog 
-          user={editUser}
-          open={!!editUser}
-          onOpenChange={(open) => !open && setEditUser(null)}
-          onSuccess={refetch}
-        />
-
-        <DeleteUserDialog 
-          user={deleteUser}
-          open={!!deleteUser}
-          onOpenChange={(open) => !open && setDeleteUser(null)}
-          onSuccess={refetch}
-        />
+        <Dialog open={assignRoleDialogOpen} onOpenChange={setAssignRoleDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Asignar Rol</DialogTitle>
+              <DialogDescription>
+                Selecciona un rol para asignar a {selectedUser?.email}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {availableRoles
+                .filter(role => !selectedUser?.roles.some(ur => ur.role_id === role.id))
+                .map((role) => (
+                  <Button
+                    key={role.id}
+                    variant="outline"
+                    className="justify-start"
+                    onClick={() => selectedUser && handleAssignRole(selectedUser.id, role.id)}
+                  >
+                    {getRoleBadge(role.nombre)}
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      {role.descripcion}
+                    </span>
+                  </Button>
+                ))}
+              {availableRoles.filter(role => !selectedUser?.roles.some(ur => ur.role_id === role.id)).length === 0 && (
+                <div className="text-center text-muted-foreground py-4">
+                  Este usuario ya tiene todos los roles disponibles asignados
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
