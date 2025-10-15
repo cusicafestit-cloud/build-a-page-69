@@ -1521,13 +1521,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "user_roles_asignado_por_fkey"
-            columns: ["asignado_por"]
-            isOneToOne: false
-            referencedRelation: "usuarios_sistema"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "user_roles_new_role_id_fkey"
             columns: ["role_id"]
             isOneToOne: false

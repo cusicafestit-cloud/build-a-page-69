@@ -99,7 +99,6 @@ const Users = () => {
         .insert({
           user_id: userId,
           role_id: roleId,
-          asignado_por: (await supabase.auth.getUser()).data.user?.id,
         });
 
       if (error) throw error;
@@ -289,17 +288,23 @@ const Users = () => {
                           {new Date(user.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setAssignRoleDialogOpen(true);
-                            }}
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Asignar Rol
-                          </Button>
+                          {user.roles.length < availableRoles.length ? (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setAssignRoleDialogOpen(true);
+                              }}
+                            >
+                              <Plus className="w-4 h-4 mr-1" />
+                              Asignar Rol
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              Todos los roles asignados
+                            </span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
