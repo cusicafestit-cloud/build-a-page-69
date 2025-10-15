@@ -148,11 +148,17 @@ const Roles = () => {
   const handleSaveChanges = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      console.log("Guardando permisos:", permissions);
+      console.log("Para rol ID:", selectedRoleId);
+      
+      const { data, error } = await supabase
         .from("roles")
         .update({ permisos: permissions })
-        .eq("id", selectedRoleId);
+        .eq("id", selectedRoleId)
+        .select();
 
+      console.log("Resultado de guardado:", data);
+      
       if (error) throw error;
 
       toast({
@@ -160,7 +166,20 @@ const Roles = () => {
         description: "Los cambios en los permisos se han guardado correctamente.",
       });
       setHasChanges(false);
-      await fetchRoles();
+      
+      // Recargar el rol específico en lugar de todos
+      const { data: updatedRole } = await supabase
+        .from("roles")
+        .select("*")
+        .eq("id", selectedRoleId)
+        .single();
+      
+      console.log("Rol recargado:", updatedRole);
+      
+      if (updatedRole) {
+        setRoles(prev => prev.map(r => r.id === selectedRoleId ? updatedRole : r));
+        loadRolePermissions(updatedRole);
+      }
     } catch (error: any) {
       console.error("Error saving permissions:", error);
       toast({
