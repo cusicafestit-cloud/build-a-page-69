@@ -431,6 +431,7 @@ export type Database = {
       }
       cuotas_estudiantes: {
         Row: {
+          comprobante_pago_url: string | null
           created_at: string | null
           estado: string | null
           estudiante_curso_id: string
@@ -445,6 +446,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          comprobante_pago_url?: string | null
           created_at?: string | null
           estado?: string | null
           estudiante_curso_id: string
@@ -459,6 +461,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          comprobante_pago_url?: string | null
           created_at?: string | null
           estado?: string | null
           estudiante_curso_id?: string
