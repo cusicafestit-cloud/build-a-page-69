@@ -30,13 +30,24 @@ export const CreateCourseDialog = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuario no autenticado");
 
+      // Get the usuarios_sistema record for the authenticated user
+      const { data: usuarioSistema, error: usuarioError } = await supabase
+        .from("usuarios_sistema")
+        .select("id")
+        .eq("email", user.email)
+        .single();
+
+      if (usuarioError || !usuarioSistema) {
+        throw new Error("Usuario del sistema no encontrado");
+      }
+
       const { data: result, error } = await supabase
         .from("cursos")
         .insert({
           ...data,
           precio: parseFloat(data.precio),
           duracion_estimada_horas: parseInt(data.duracion_estimada_horas),
-          creado_por: user.id,
+          creado_por: usuarioSistema.id,
           estado: "borrador",
         })
         .select()
