@@ -19,15 +19,35 @@ export const CreateUserDialog = ({ open, onOpenChange, onSuccess }: CreateUserDi
     nombre: "",
     email: "",
     telefono: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nombre || !formData.email) {
+    if (!formData.nombre || !formData.email || !formData.password) {
       toast({
         title: "Error",
-        description: "Nombre y email son requeridos",
+        description: "Nombre, email y contraseña son requeridos",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        title: "Error",
+        description: "La contraseña debe tener al menos 6 caracteres",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Las contraseñas no coinciden",
         variant: "destructive"
       });
       return;
@@ -35,28 +55,59 @@ export const CreateUserDialog = ({ open, onOpenChange, onSuccess }: CreateUserDi
     
     setLoading(true);
     try {
-      // Crear usuario en usuarios_sistema
-      const { data: newUser, error: userError } = await supabase
+      // Primero crear usuario en auth.users
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            nombre: formData.nombre,
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error("No se pudo crear el usuario en auth");
+      }
+
+      // Luego crear usuario en usuarios_sistema
+      const { error: userError } = await supabase
         .from("usuarios_sistema")
         .insert({
           nombre: formData.nombre,
           email: formData.email,
           telefono: formData.telefono || null,
-          password_hash: 'temp_hash_' + Date.now(), // Password temporal
+          password_hash: 'managed_by_supabase_auth',
           rol: 'staff',
           estado: 'activo'
-        })
-        .select()
-        .single();
+        });
 
       if (userError) throw userError;
+
+      // Asignar rol por defecto (user)
+      const { data: roleData } = await supabase
+        .from("roles")
+        .select("id")
+        .eq("nombre", "user")
+        .maybeSingle();
+
+      if (roleData) {
+        await supabase
+          .from("user_roles")
+          .insert({
+            user_id: authData.user.id,
+            role_id: roleData.id
+          });
+      }
 
       toast({
         title: "Usuario creado",
         description: `${formData.nombre} ha sido agregado al sistema`,
       });
       
-      setFormData({ nombre: "", email: "", telefono: "" });
+      setFormData({ nombre: "", email: "", telefono: "", password: "", confirmPassword: "" });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -109,6 +160,28 @@ export const CreateUserDialog = ({ open, onOpenChange, onSuccess }: CreateUserDi
                 value={formData.telefono}
                 onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                 placeholder="+58 412 1234567"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Contraseña *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="Mínimo 6 caracteres"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                placeholder="Repetir contraseña"
+                required
               />
             </div>
           </div>
