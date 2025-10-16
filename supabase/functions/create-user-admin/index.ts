@@ -58,11 +58,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { nombre, email, telefono, password } = await req.json()
+    const { nombre, email, telefono, password, roleId } = await req.json()
 
-    if (!nombre || !email || !password) {
+    if (!nombre || !email || !password || !roleId) {
       return new Response(
-        JSON.stringify({ error: 'Nombre, email y contraseña son requeridos' }),
+        JSON.stringify({ error: 'Nombre, email, contraseña y rol son requeridos' }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -124,21 +124,13 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Assign default role (user)
-    const { data: roleData } = await supabaseAdmin
-      .from('roles')
-      .select('id')
-      .eq('nombre', 'user')
-      .maybeSingle()
-
-    if (roleData) {
-      await supabaseAdmin
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role_id: roleData.id
-        })
-    }
+    // Assign the specified role
+    await supabaseAdmin
+      .from('user_roles')
+      .insert({
+        user_id: authData.user.id,
+        role_id: roleId
+      })
 
     return new Response(
       JSON.stringify({ 
