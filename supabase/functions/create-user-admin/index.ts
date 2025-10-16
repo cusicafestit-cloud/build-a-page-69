@@ -44,32 +44,22 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check if user is admin by querying the database directly
-    const { data: usuarioData, error: usuarioError } = await supabaseAdmin
-      .from('usuarios_sistema')
-      .select('id')
-      .eq('email', user.email)
-      .single()
+    // Check if user is admin using database function
+    const { data: isAdmin, error: adminCheckError } = await supabaseAdmin
+      .rpc('is_admin_by_email', { user_email: user.email })
     
-    if (usuarioError || !usuarioData) {
+    if (adminCheckError) {
+      console.error('Error checking admin status:', adminCheckError)
       return new Response(
-        JSON.stringify({ error: 'User not found in system' }),
+        JSON.stringify({ error: 'Error verifying admin status' }),
         { 
-          status: 403,
+          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
 
-    // Check if user has admin role
-    const { data: roleData, error: roleError } = await supabaseAdmin
-      .from('user_roles')
-      .select('role_id, roles!inner(nombre)')
-      .eq('user_id', usuarioData.id)
-      .eq('roles.nombre', 'admin')
-      .maybeSingle()
-    
-    if (roleError || !roleData) {
+    if (!isAdmin) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized: Admin access required' }),
         { 
