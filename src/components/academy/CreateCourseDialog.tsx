@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,16 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Upload, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 export const CreateCourseDialog = () => {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [imagen, setImagen] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedProfesores, setSelectedProfesores] = useState<string[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -32,6 +36,20 @@ export const CreateCourseDialog = () => {
     frecuencia_dias_cuotas: "30",
     lo_que_aprenderas: "",
     modulos: "",
+  });
+
+  // Fetch professors
+  const { data: profesores = [] } = useQuery({
+    queryKey: ["profesores"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profesores")
+        .select("*")
+        .eq("activo", true)
+        .order("nombre");
+      if (error) throw error;
+      return data;
+    },
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,6 +151,21 @@ export const CreateCourseDialog = () => {
         .single();
 
       if (error) throw error;
+
+      // Insert professor relationships
+      if (selectedProfesores.length > 0) {
+        const profesorRelations = selectedProfesores.map(profesorId => ({
+          curso_id: result.id,
+          profesor_id: profesorId,
+        }));
+
+        const { error: relError } = await supabase
+          .from("curso_profesores")
+          .insert(profesorRelations);
+
+        if (relError) throw relError;
+      }
+
       return result;
     },
     onSuccess: () => {
@@ -158,6 +191,7 @@ export const CreateCourseDialog = () => {
       });
       setImagen(null);
       setPreviewUrl(null);
+      setSelectedProfesores([]);
     },
     onError: (error) => {
       toast({
@@ -258,24 +292,59 @@ export const CreateCourseDialog = () => {
 
           <div>
             <Label htmlFor="lo_que_aprenderas">Lo que Aprenderás</Label>
-            <Textarea
-              id="lo_que_aprenderas"
-              value={formData.lo_que_aprenderas}
-              onChange={(e) => setFormData({ ...formData, lo_que_aprenderas: e.target.value })}
-              rows={5}
-              placeholder="Describe lo que los estudiantes aprenderán en este curso..."
-            />
+            <div className="mt-2">
+              <ReactQuill
+                theme="snow"
+                value={formData.lo_que_aprenderas}
+                onChange={(value) => setFormData({ ...formData, lo_que_aprenderas: value })}
+                placeholder="Describe lo que los estudiantes aprenderán en este curso..."
+                className="bg-background"
+              />
+            </div>
           </div>
 
           <div>
             <Label htmlFor="modulos">Módulos del Curso</Label>
-            <Textarea
-              id="modulos"
-              value={formData.modulos}
-              onChange={(e) => setFormData({ ...formData, modulos: e.target.value })}
-              rows={5}
-              placeholder="Describe los módulos y el contenido del curso..."
-            />
+            <div className="mt-2">
+              <ReactQuill
+                theme="snow"
+                value={formData.modulos}
+                onChange={(value) => setFormData({ ...formData, modulos: value })}
+                placeholder="Describe los módulos y el contenido del curso..."
+                className="bg-background"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Profesores</Label>
+            <div className="mt-2 space-y-2 p-4 border rounded-lg max-h-48 overflow-y-auto">
+              {profesores.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay profesores disponibles</p>
+              ) : (
+                profesores.map((profesor: any) => (
+                  <div key={profesor.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`profesor-${profesor.id}`}
+                      checked={selectedProfesores.includes(profesor.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedProfesores([...selectedProfesores, profesor.id]);
+                        } else {
+                          setSelectedProfesores(selectedProfesores.filter(id => id !== profesor.id));
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`profesor-${profesor.id}`}
+                      className="text-sm cursor-pointer flex-1"
+                    >
+                      {profesor.nombre}
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

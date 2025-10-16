@@ -485,6 +485,42 @@ export type Database = {
           },
         ]
       }
+      curso_profesores: {
+        Row: {
+          created_at: string | null
+          curso_id: string
+          id: string
+          profesor_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          curso_id: string
+          id?: string
+          profesor_id: string
+        }
+        Update: {
+          created_at?: string | null
+          curso_id?: string
+          id?: string
+          profesor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curso_profesores_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_profesores_profesor_id_fkey"
+            columns: ["profesor_id"]
+            isOneToOne: false
+            referencedRelation: "profesores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cursos: {
         Row: {
           categoria: string | null
