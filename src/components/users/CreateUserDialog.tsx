@@ -55,7 +55,10 @@ export const CreateUserDialog = ({ open, onOpenChange, onSuccess }: CreateUserDi
     
     setLoading(true);
     try {
-      // Primero crear usuario en auth.users
+      // Guardar la sesión actual del admin
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      // Crear usuario en auth.users
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -72,7 +75,7 @@ export const CreateUserDialog = ({ open, onOpenChange, onSuccess }: CreateUserDi
         throw new Error("No se pudo crear el usuario en auth");
       }
 
-      // Luego crear usuario en usuarios_sistema
+      // Crear usuario en usuarios_sistema
       const { error: userError } = await supabase
         .from("usuarios_sistema")
         .insert({
@@ -100,6 +103,14 @@ export const CreateUserDialog = ({ open, onOpenChange, onSuccess }: CreateUserDi
             user_id: authData.user.id,
             role_id: roleData.id
           });
+      }
+
+      // Restaurar la sesión del admin
+      if (currentSession) {
+        await supabase.auth.setSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token
+        });
       }
 
       toast({
