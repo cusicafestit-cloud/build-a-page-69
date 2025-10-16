@@ -30,6 +30,7 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
   const [imagenPromo3, setImagenPromo3] = useState<File | null>(null);
   const [previewPromo3, setPreviewPromo3] = useState<string | null>(course.imagen_promo_3);
   const [selectedProfesores, setSelectedProfesores] = useState<string[]>([]);
+  const [selectedFormasPago, setSelectedFormasPago] = useState<string[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -63,6 +64,20 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
     },
   });
 
+  // Fetch payment methods
+  const { data: formasPago = [] } = useQuery({
+    queryKey: ["payment-methods"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("formas_pago")
+        .select("*")
+        .eq("activo", true)
+        .order("orden");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Fetch current course professors
   useEffect(() => {
     const fetchCourseProfesores = async () => {
@@ -78,6 +93,24 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
 
     if (open) {
       fetchCourseProfesores();
+    }
+  }, [course.id, open]);
+
+  // Fetch current course payment methods
+  useEffect(() => {
+    const fetchCourseFormasPago = async () => {
+      const { data, error } = await supabase
+        .from("curso_formas_pago")
+        .select("forma_pago_id")
+        .eq("curso_id", course.id);
+      
+      if (!error && data) {
+        setSelectedFormasPago(data.map(cfp => cfp.forma_pago_id));
+      }
+    };
+
+    if (open) {
+      fetchCourseFormasPago();
     }
   }, [course.id, open]);
 
@@ -309,6 +342,27 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
         if (relError) throw relError;
       }
 
+      // Update payment method relationships
+      // First, delete existing relationships
+      await supabase
+        .from("curso_formas_pago")
+        .delete()
+        .eq("curso_id", course.id);
+
+      // Then insert new relationships
+      if (selectedFormasPago.length > 0) {
+        const formasPagoRelations = selectedFormasPago.map(formaPagoId => ({
+          curso_id: course.id,
+          forma_pago_id: formaPagoId,
+        }));
+
+        const { error: relError } = await supabase
+          .from("curso_formas_pago")
+          .insert(formasPagoRelations);
+
+        if (relError) throw relError;
+      }
+
       return result;
     },
     onSuccess: () => {
@@ -466,6 +520,37 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
                       className="text-sm cursor-pointer flex-1"
                     >
                       {profesor.nombre}
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Label>Formas de Pago Disponibles</Label>
+            <div className="mt-2 space-y-2 p-4 border rounded-lg max-h-48 overflow-y-auto">
+              {formasPago.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay formas de pago disponibles</p>
+              ) : (
+                formasPago.map((forma: any) => (
+                  <div key={forma.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`forma-pago-edit-${forma.id}`}
+                      checked={selectedFormasPago.includes(forma.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedFormasPago([...selectedFormasPago, forma.id]);
+                        } else {
+                          setSelectedFormasPago(selectedFormasPago.filter(id => id !== forma.id));
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`forma-pago-edit-${forma.id}`}
+                      className="text-sm cursor-pointer flex-1"
+                    >
+                      {forma.nombre}
                     </label>
                   </div>
                 ))

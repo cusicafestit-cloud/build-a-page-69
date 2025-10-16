@@ -26,6 +26,7 @@ export const CreateCourseDialog = () => {
   const [imagenPromo3, setImagenPromo3] = useState<File | null>(null);
   const [previewPromo3, setPreviewPromo3] = useState<string | null>(null);
   const [selectedProfesores, setSelectedProfesores] = useState<string[]>([]);
+  const [selectedFormasPago, setSelectedFormasPago] = useState<string[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -53,6 +54,20 @@ export const CreateCourseDialog = () => {
         .select("*")
         .eq("activo", true)
         .order("nombre");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch payment methods
+  const { data: formasPago = [] } = useQuery({
+    queryKey: ["payment-methods"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("formas_pago")
+        .select("*")
+        .eq("activo", true)
+        .order("orden");
       if (error) throw error;
       return data;
     },
@@ -293,6 +308,20 @@ export const CreateCourseDialog = () => {
         if (relError) throw relError;
       }
 
+      // Insert payment method relationships
+      if (selectedFormasPago.length > 0) {
+        const formasPagoRelations = selectedFormasPago.map(formaPagoId => ({
+          curso_id: result.id,
+          forma_pago_id: formaPagoId,
+        }));
+
+        const { error: relError } = await supabase
+          .from("curso_formas_pago")
+          .insert(formasPagoRelations);
+
+        if (relError) throw relError;
+      }
+
       return result;
     },
     onSuccess: () => {
@@ -325,6 +354,7 @@ export const CreateCourseDialog = () => {
       setImagenPromo3(null);
       setPreviewPromo3(null);
       setSelectedProfesores([]);
+      setSelectedFormasPago([]);
     },
     onError: (error) => {
       toast({
@@ -473,6 +503,37 @@ export const CreateCourseDialog = () => {
                       className="text-sm cursor-pointer flex-1"
                     >
                       {profesor.nombre}
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Label>Formas de Pago Disponibles</Label>
+            <div className="mt-2 space-y-2 p-4 border rounded-lg max-h-48 overflow-y-auto">
+              {formasPago.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay formas de pago disponibles</p>
+              ) : (
+                formasPago.map((forma: any) => (
+                  <div key={forma.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`forma-pago-${forma.id}`}
+                      checked={selectedFormasPago.includes(forma.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedFormasPago([...selectedFormasPago, forma.id]);
+                        } else {
+                          setSelectedFormasPago(selectedFormasPago.filter(id => id !== forma.id));
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`forma-pago-${forma.id}`}
+                      className="text-sm cursor-pointer flex-1"
+                    >
+                      {forma.nombre}
                     </label>
                   </div>
                 ))

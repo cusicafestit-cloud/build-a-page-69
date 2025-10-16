@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Settings as SettingsIcon, Bell, Mail, Shield, Palette, Database, Upload } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Mail, Shield, Palette, Database, Upload, CreditCard } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { PaymentMethodsSection } from "@/components/settings/PaymentMethodsSection";
 
 const Settings = () => {
   const { toast } = useToast();
@@ -354,7 +355,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="general" className="flex items-center gap-2">
               <SettingsIcon className="w-4 h-4" />
               General
@@ -374,6 +375,10 @@ const Settings = () => {
             <TabsTrigger value="exchange" className="flex items-center gap-2">
               <Database className="w-4 h-4" />
               Canjes
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Pagos
             </TabsTrigger>
             <TabsTrigger value="appearance" className="flex items-center gap-2">
               <Palette className="w-4 h-4" />
@@ -648,6 +653,10 @@ const Settings = () => {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="payments" className="space-y-6">
+            <PaymentMethodsSection />
           </TabsContent>
 
           <TabsContent value="appearance" className="space-y-6">

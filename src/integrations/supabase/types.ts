@@ -485,6 +485,42 @@ export type Database = {
           },
         ]
       }
+      curso_formas_pago: {
+        Row: {
+          created_at: string | null
+          curso_id: string
+          forma_pago_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          curso_id: string
+          forma_pago_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          curso_id?: string
+          forma_pago_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curso_formas_pago_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_formas_pago_forma_pago_id_fkey"
+            columns: ["forma_pago_id"]
+            isOneToOne: false
+            referencedRelation: "formas_pago"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       curso_profesores: {
         Row: {
           created_at: string | null
@@ -908,6 +944,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      formas_pago: {
+        Row: {
+          activo: boolean | null
+          configuracion: Json | null
+          created_at: string | null
+          descripcion: string | null
+          icono: string | null
+          id: string
+          nombre: string
+          orden: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          configuracion?: Json | null
+          created_at?: string | null
+          descripcion?: string | null
+          icono?: string | null
+          id?: string
+          nombre: string
+          orden?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          configuracion?: Json | null
+          created_at?: string | null
+          descripcion?: string | null
+          icono?: string | null
+          id?: string
+          nombre?: string
+          orden?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       importaciones_queue: {
         Row: {
