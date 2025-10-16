@@ -110,27 +110,16 @@ serve(async (req) => {
     const ticketsMap = new Map(todosTickets?.map(t => [t.tipo.toLowerCase(), t]) || [])
     
     // 8.1 Validar que las columnas obligatorias existen
-    const camposObligatorios = ['email', 'nombre', 'apellido', 'evento_nombre']
+    const camposObligatorios = ['email']
     const camposFaltantes = camposObligatorios.filter(campo => !columnMapping[campo])
     
     if (camposFaltantes.length > 0) {
       const headersEncontrados = Object.keys(chunkRows[0] || {})
-      const columnasEsperadas = {
-        email: 'Email, E-mail, Correo',
-        nombre: 'Nombre, First Name',
-        apellido: 'Apellido, Last Name',
-        evento_nombre: 'Nombre Evento, Evento, Event, Show'
-      }
-      
-      const detallesError = camposFaltantes.map(campo => {
-        return `\n  - ${campo}: Se esperaba una columna como: ${columnasEsperadas[campo as keyof typeof columnasEsperadas]}`
-      }).join('')
       
       throw new Error(
-        `❌ ERROR DE VALIDACIÓN: Columnas obligatorias no detectadas en el archivo.\n\n` +
-        `Columnas faltantes:${detallesError}\n\n` +
+        `❌ ERROR DE VALIDACIÓN: La columna obligatoria 'Email' no fue detectada en el archivo.\n\n` +
         `Columnas encontradas en el archivo:\n  ${headersEncontrados.join(', ')}\n\n` +
-        `💡 Solución: Verifica que tu archivo Excel tenga los encabezados correctos. ` +
+        `💡 Solución: Verifica que tu archivo Excel tenga una columna con el encabezado 'Email', 'E-mail' o 'Correo'. ` +
         `Descarga la plantilla oficial desde la interfaz para asegurar el formato correcto.`
       )
     }
@@ -154,48 +143,18 @@ serve(async (req) => {
       const row = chunkRows[i]
       
       try {
-        // Validar campos obligatorios
+        // Extraer campos del archivo
         const email = extractValue(row, columnMapping.email)
-        const nombre = extractValue(row, columnMapping.nombre)
-        const apellido = extractValue(row, columnMapping.apellido)
-        const eventoNombre = extractValue(row, columnMapping.evento_nombre)
+        const nombre = extractValue(row, columnMapping.nombre) || 'Sin nombre'
+        const apellido = extractValue(row, columnMapping.apellido) || ''
+        const eventoNombre = extractValue(row, columnMapping.evento_nombre) || 'Shows'
         
-        // Validar email
+        // Validar email (único campo obligatorio)
         if (!email || !isValidEmail(email)) {
           errores.push({
             fila: job.registros_inicio + i + 2,
             error: 'Email inválido o faltante',
             email: email || 'N/A'
-          })
-          continue
-        }
-        
-        // Validar nombre
-        if (!nombre || nombre.trim() === '') {
-          errores.push({
-            fila: job.registros_inicio + i + 2,
-            error: 'Nombre es obligatorio',
-            email: email
-          })
-          continue
-        }
-        
-        // Validar apellido
-        if (!apellido || apellido.trim() === '') {
-          errores.push({
-            fila: job.registros_inicio + i + 2,
-            error: 'Apellido es obligatorio',
-            email: email
-          })
-          continue
-        }
-        
-        // Validar nombre evento
-        if (!eventoNombre || eventoNombre.trim() === '') {
-          errores.push({
-            fila: job.registros_inicio + i + 2,
-            error: 'Nombre Evento es obligatorio',
-            email: email
           })
           continue
         }

@@ -92,7 +92,7 @@ export type Database = {
           genero: string | null
           id: string
           metadata: Json | null
-          nombre: string
+          nombre: string | null
           seccion: string | null
           telefono: string | null
           tiketera: string | null
@@ -115,7 +115,7 @@ export type Database = {
           genero?: string | null
           id?: string
           metadata?: Json | null
-          nombre: string
+          nombre?: string | null
           seccion?: string | null
           telefono?: string | null
           tiketera?: string | null
@@ -138,7 +138,7 @@ export type Database = {
           genero?: string | null
           id?: string
           metadata?: Json | null
-          nombre?: string
+          nombre?: string | null
           seccion?: string | null
           telefono?: string | null
           tiketera?: string | null

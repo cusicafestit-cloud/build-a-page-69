@@ -42,12 +42,13 @@ export const generateImportTemplate = () => {
     ],
     [],
     ['⚠️ INSTRUCCIONES IMPORTANTES:'],
-    ['COLUMNAS OBLIGATORIAS: Email, Nombre, Apellido, Nombre Evento'],
-    ['COLUMNAS OPCIONALES: ID Evento, ID Ticket, Teléfono, Documento Identidad, Género, Fecha Nacimiento, Dirección, Sección, Tiketera, Tipo Ticket Nombre, Fecha Compra'],
+    ['COLUMNA OBLIGATORIA: Email'],
+    ['COLUMNAS OPCIONALES: Nombre, Apellido, Nombre Evento, ID Evento, ID Ticket, Teléfono, Documento Identidad, Género, Fecha Nacimiento, Dirección, Sección, Tiketera, Tipo Ticket Nombre, Fecha Compra'],
     [''],
     ['📋 NOTAS:'],
     ['- Los encabezados deben coincidir EXACTAMENTE con los nombres mostrados arriba'],
-    ['- Si no se proporciona ID Evento, se usará "Shows" como evento por defecto'],
+    ['- Si no se proporciona Nombre Evento, se usará "Shows" como evento por defecto'],
+    ['- Si no se proporciona Nombre, se guardará como "Sin nombre"'],
     ['- Formato de fechas: YYYY-MM-DD (ejemplo: 2025-01-15)'],
     ['- El Email debe ser válido y único para cada asistente']
   ];
