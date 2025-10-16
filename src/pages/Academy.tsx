@@ -2,14 +2,16 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Users, BookOpen, Play } from "lucide-react";
+import { GraduationCap, Users, BookOpen, Play, ExternalLink, Copy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CreateCourseDialog } from "@/components/academy/CreateCourseDialog";
 import { EditCourseDialog } from "@/components/academy/EditCourseDialog";
+import { useToast } from "@/hooks/use-toast";
 
 const Academy = () => {
+  const { toast } = useToast();
   const { data: courses = [], isLoading } = useQuery({
     queryKey: ["courses"],
     queryFn: async () => {
@@ -126,13 +128,40 @@ const Academy = () => {
                         <span>0 lecciones</span>
                       </div>
                     </div>
-                    <div className="flex gap-2 pt-2">
-                      <EditCourseDialog course={course} />
-                      <Link to={`/academy/students?curso=${course.id}`} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full">
-                          Ver Estudiantes
-                        </Button>
-                      </Link>
+                    <div className="flex flex-col gap-2 pt-2">
+                      <div className="flex gap-2">
+                        <EditCourseDialog course={course} />
+                        <Link to={`/academy/students?curso=${course.id}`} className="flex-1">
+                          <Button variant="outline" size="sm" className="w-full">
+                            Ver Estudiantes
+                          </Button>
+                        </Link>
+                      </div>
+                      {course.estado === "activo" && (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              const url = `${window.location.origin}/curso/${course.id}`;
+                              navigator.clipboard.writeText(url);
+                              toast({
+                                title: "URL copiada",
+                                description: "La URL del curso ha sido copiada al portapapeles",
+                              });
+                            }}
+                          >
+                            <Copy className="w-3 h-3 mr-1" />
+                            Copiar URL
+                          </Button>
+                          <Link to={`/curso/${course.id}`} target="_blank">
+                            <Button variant="outline" size="sm">
+                              <ExternalLink className="w-3 h-3" />
+                            </Button>
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

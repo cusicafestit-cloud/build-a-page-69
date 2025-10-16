@@ -20,6 +20,7 @@ import Roles from "./pages/Roles";
 import Profile from "./pages/Profile";
 import DatabaseValidation from "./pages/DatabaseValidationNew";
 import TicketExchange from "./pages/TicketExchange";
+import CourseCheckout from "./pages/CourseCheckout";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -35,6 +36,7 @@ const App = () => (
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/canje" element={<TicketExchange />} />
+          <Route path="/curso/:id" element={<CourseCheckout />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
           <Route path="/attendees" element={<ProtectedRoute><Attendees /></ProtectedRoute>} />
