@@ -58,6 +58,7 @@ const Users = () => {
         email: row.user_email,
         nombre: row.user_nombre,
         created_at: row.user_created_at,
+        last_sign_in_at: row.user_last_sign_in_at,
         roles: row.roles || [],
       })) as AuthUser[];
     },
