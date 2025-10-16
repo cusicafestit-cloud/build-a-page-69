@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import cusicaLogo from "@/assets/cusica-logo.jpg";
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -8,7 +9,6 @@ import {
   Repeat, 
   DollarSign, 
   Mail,
-  Music,
   GraduationCap,
   UserCog,
   Database,
@@ -41,8 +41,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-sidebar border-b border-sidebar-border z-50 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-            <Music className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 rounded-lg overflow-hidden">
+            <img src={cusicaLogo} alt="Cusica Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-sidebar-foreground">Cusica</h1>
@@ -65,8 +65,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <aside className="hidden lg:block w-64 bg-sidebar border-r border-sidebar-border fixed h-full z-50">
         <div className="p-6">
           <div className="flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <Music className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-lg overflow-hidden">
+              <img src={cusicaLogo} alt="Cusica Logo" className="w-full h-full object-cover" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-sidebar-foreground">Cusica</h1>
