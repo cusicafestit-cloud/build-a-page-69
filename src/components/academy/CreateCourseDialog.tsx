@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +24,9 @@ export const CreateCourseDialog = () => {
     categoria: "",
     precio: "0",
     duracion_estimada_horas: "0",
+    permite_cuotas: false,
+    max_cuotas: "1",
+    frecuencia_dias_cuotas: "30",
   });
 
   const createCourseMutation = useMutation({
@@ -44,9 +48,16 @@ export const CreateCourseDialog = () => {
       const { data: result, error } = await supabase
         .from("cursos")
         .insert({
-          ...data,
+          titulo: data.titulo,
+          descripcion_corta: data.descripcion_corta,
+          descripcion: data.descripcion,
+          nivel: data.nivel,
+          categoria: data.categoria,
           precio: parseFloat(data.precio),
           duracion_estimada_horas: parseInt(data.duracion_estimada_horas),
+          permite_cuotas: data.permite_cuotas,
+          max_cuotas: parseInt(data.max_cuotas),
+          frecuencia_dias_cuotas: parseInt(data.frecuencia_dias_cuotas),
           creado_por: usuarioSistema.id,
           estado: "borrador",
         })
@@ -71,6 +82,9 @@ export const CreateCourseDialog = () => {
         categoria: "",
         precio: "0",
         duracion_estimada_horas: "0",
+        permite_cuotas: false,
+        max_cuotas: "1",
+        frecuencia_dias_cuotas: "30",
       });
     },
     onError: (error) => {
@@ -175,6 +189,50 @@ export const CreateCourseDialog = () => {
                 onChange={(e) => setFormData({ ...formData, duracion_estimada_horas: e.target.value })}
               />
             </div>
+          </div>
+
+          {/* Configuración de Cuotas */}
+          <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="permite_cuotas">Permitir Pago en Cuotas</Label>
+                <p className="text-sm text-muted-foreground">
+                  Los estudiantes podrán pagar el curso en cuotas
+                </p>
+              </div>
+              <Switch
+                id="permite_cuotas"
+                checked={formData.permite_cuotas}
+                onCheckedChange={(checked) => setFormData({ ...formData, permite_cuotas: checked })}
+              />
+            </div>
+
+            {formData.permite_cuotas && (
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <Label htmlFor="max_cuotas">Máximo de Cuotas</Label>
+                  <Input
+                    id="max_cuotas"
+                    type="number"
+                    min="1"
+                    value={formData.max_cuotas}
+                    onChange={(e) => setFormData({ ...formData, max_cuotas: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="frecuencia_dias">Frecuencia (días)</Label>
+                  <Input
+                    id="frecuencia_dias"
+                    type="number"
+                    min="1"
+                    value={formData.frecuencia_dias_cuotas}
+                    onChange={(e) => setFormData({ ...formData, frecuencia_dias_cuotas: e.target.value })}
+                    placeholder="Días entre cuotas"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

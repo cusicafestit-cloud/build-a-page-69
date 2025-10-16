@@ -495,12 +495,15 @@ export type Database = {
           descripcion_corta: string | null
           duracion_estimada_horas: number | null
           estado: string | null
+          frecuencia_dias_cuotas: number | null
           id: string
           imagen_portada_url: string | null
           instructor_id: string | null
+          max_cuotas: number | null
           nivel: string | null
           objetivos: string[] | null
           orden_visualizacion: number | null
+          permite_cuotas: boolean | null
           precio: number | null
           requisitos: string[] | null
           titulo: string
@@ -516,12 +519,15 @@ export type Database = {
           descripcion_corta?: string | null
           duracion_estimada_horas?: number | null
           estado?: string | null
+          frecuencia_dias_cuotas?: number | null
           id?: string
           imagen_portada_url?: string | null
           instructor_id?: string | null
+          max_cuotas?: number | null
           nivel?: string | null
           objetivos?: string[] | null
           orden_visualizacion?: number | null
+          permite_cuotas?: boolean | null
           precio?: number | null
           requisitos?: string[] | null
           titulo: string
@@ -537,12 +543,15 @@ export type Database = {
           descripcion_corta?: string | null
           duracion_estimada_horas?: number | null
           estado?: string | null
+          frecuencia_dias_cuotas?: number | null
           id?: string
           imagen_portada_url?: string | null
           instructor_id?: string | null
+          max_cuotas?: number | null
           nivel?: string | null
           objetivos?: string[] | null
           orden_visualizacion?: number | null
+          permite_cuotas?: boolean | null
           precio?: number | null
           requisitos?: string[] | null
           titulo?: string
