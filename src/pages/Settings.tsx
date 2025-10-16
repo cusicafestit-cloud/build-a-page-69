@@ -15,8 +15,11 @@ const Settings = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
   
   const [generalSettings, setGeneralSettings] = useState({
     companyName: "Cusica Events",
@@ -72,6 +75,8 @@ const Settings = () => {
           
           if (config.clave === 'logoUrl') {
             setLogoUrl(valor);
+          } else if (config.clave === 'faviconUrl') {
+            setFaviconUrl(valor);
           } else if (config.categoria === 'general') {
             setGeneralSettings(prev => ({
               ...prev,
@@ -185,6 +190,99 @@ const Settings = () => {
       setUploadingLogo(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleFaviconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Por favor selecciona un archivo de imagen.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validar tamaño (máximo 1MB para favicon)
+    if (file.size > 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "El favicon debe ser menor a 1MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadingFavicon(true);
+    try {
+      // Eliminar favicon anterior si existe
+      if (faviconUrl) {
+        const oldPath = faviconUrl.split('/logos/')[1];
+        if (oldPath) {
+          await supabase.storage.from('logos').remove([oldPath]);
+        }
+      }
+
+      // Subir nuevo favicon
+      const fileExt = file.name.split('.').pop();
+      const fileName = `favicon-${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Obtener URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('logos')
+        .getPublicUrl(fileName);
+
+      setFaviconUrl(publicUrl);
+
+      // Guardar en configuraciones
+      await supabase
+        .from('configuraciones_sistema')
+        .upsert({
+          clave: 'faviconUrl',
+          valor: publicUrl,
+          categoria: 'apariencia',
+          descripcion: 'URL del favicon de la empresa'
+        }, {
+          onConflict: 'clave'
+        });
+
+      // Actualizar el favicon en el DOM
+      const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
+      link.type = 'image/x-icon';
+      link.rel = 'icon';
+      link.href = publicUrl;
+      if (!document.querySelector("link[rel*='icon']")) {
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+
+      toast({
+        title: "Favicon actualizado",
+        description: "El favicon ha sido cambiado exitosamente. Recarga la página para ver los cambios.",
+      });
+    } catch (error) {
+      console.error('Error uploading favicon:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo subir el favicon.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingFavicon(false);
+      if (faviconInputRef.current) {
+        faviconInputRef.current.value = '';
       }
     }
   };
@@ -610,6 +708,46 @@ const Settings = () => {
                         </Button>
                         <p className="text-xs text-muted-foreground">
                           PNG, JPG o WEBP (máx. 2MB)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="favicon-upload">Favicon (Ícono del Navegador)</Label>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Este ícono aparece en la pestaña del navegador y en los favoritos
+                    </p>
+                    <div className="flex items-center gap-4">
+                      {faviconUrl ? (
+                        <img 
+                          src={faviconUrl} 
+                          alt="Favicon" 
+                          className="w-8 h-8 object-contain rounded border border-border"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">C</span>
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-2">
+                        <input
+                          ref={faviconInputRef}
+                          type="file"
+                          id="favicon-upload"
+                          accept="image/*"
+                          onChange={handleFaviconUpload}
+                          className="hidden"
+                        />
+                        <Button 
+                          variant="outline" 
+                          onClick={() => faviconInputRef.current?.click()}
+                          disabled={uploadingFavicon}
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          {uploadingFavicon ? "Subiendo..." : "Cambiar Favicon"}
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          ICO, PNG o JPG (máx. 1MB, recomendado 32x32px)
                         </p>
                       </div>
                     </div>

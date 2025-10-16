@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import cusicaLogo from "@/assets/cusica-logo.jpg";
 
 const authSchema = z.object({
   email: z.string().email({ message: "Email inválido" }),
@@ -203,6 +204,11 @@ const Auth = () => {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 rounded-lg overflow-hidden shadow-md">
+              <img src={cusicaLogo} alt="Cusica Logo" className="w-full h-full object-cover" />
+            </div>
+          </div>
           <CardTitle className="text-3xl font-bold text-foreground">Cusica Platform</CardTitle>
           <CardDescription className="text-muted-foreground">
             Gestión de eventos y canjes
