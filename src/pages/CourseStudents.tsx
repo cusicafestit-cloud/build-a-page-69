@@ -7,79 +7,77 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Search, Users, BookOpen, Award, ArrowLeft } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
-
-type Student = {
-  id: string;
-  name: string;
-  email: string;
-  course: string;
-  progress: number;
-  status: "active" | "completed" | "inactive";
-  enrollmentDate: string;
-  lastActivity: string;
-};
+import { Link, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { CreateStudentDialog } from "@/components/academy/CreateStudentDialog";
 
 const CourseStudents = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchParams] = useSearchParams();
+  const cursoId = searchParams.get("curso");
 
-  const mockStudents: Student[] = [
-    {
-      id: "1",
-      name: "Carlos Mendoza",
-      email: "carlos@email.com",
-      course: "Producción Musical Básica",
-      progress: 75,
-      status: "active",
-      enrollmentDate: "2025-01-10",
-      lastActivity: "2025-01-18"
+  const { data: courseData } = useQuery({
+    queryKey: ["course", cursoId],
+    queryFn: async () => {
+      if (!cursoId) return null;
+      const { data, error } = await supabase
+        .from("cursos")
+        .select("titulo")
+        .eq("id", cursoId)
+        .single();
+      
+      if (error) throw error;
+      return data;
     },
-    {
-      id: "2",
-      name: "Ana Rodríguez",
-      email: "ana@email.com",
-      course: "Marketing para Músicos",
-      progress: 100,
-      status: "completed",
-      enrollmentDate: "2025-01-05",
-      lastActivity: "2025-01-17"
-    },
-    {
-      id: "3",
-      name: "Luis García",
-      email: "luis@email.com",
-      course: "Producción Musical Básica",
-      progress: 45,
-      status: "active",
-      enrollmentDate: "2025-01-12",
-      lastActivity: "2025-01-16"
-    }
-  ];
+    enabled: !!cursoId,
+  });
 
-  const filteredStudents = mockStudents.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.course.toLowerCase().includes(searchTerm.toLowerCase())
+  const { data: students = [], isLoading } = useQuery({
+    queryKey: ["course-students", cursoId],
+    queryFn: async () => {
+      if (!cursoId) return [];
+      const { data, error } = await supabase
+        .from("estudiantes_cursos")
+        .select("*")
+        .eq("curso_id", cursoId)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!cursoId,
+  });
+
+  const filteredStudents = students.filter(student =>
+    student.nombre_estudiante.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.email_estudiante.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
+      case "activo":
         return <Badge className="bg-primary text-primary-foreground">Activo</Badge>;
-      case "completed":
-        return <Badge className="bg-success text-success-foreground">Completado</Badge>;
-      case "inactive":
+      case "completado":
+        return <Badge className="bg-green-500 text-white">Completado</Badge>;
+      case "inactivo":
         return <Badge variant="secondary">Inactivo</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
+  const activeStudents = students.filter(s => s.estado === "activo").length;
+  const completedStudents = students.filter(s => s.estado === "completado").length;
+  const avgProgress = students.length > 0 
+    ? Math.round(students.reduce((sum, s) => sum + (s.progreso || 0), 0) / students.length)
+    : 0;
+
   const stats = [
-    { title: "Total Estudiantes", value: mockStudents.length.toString(), icon: Users },
-    { title: "Activos", value: mockStudents.filter(s => s.status === "active").length.toString(), icon: BookOpen },
-    { title: "Completados", value: mockStudents.filter(s => s.status === "completed").length.toString(), icon: Award },
-    { title: "Progreso Promedio", value: `${Math.round(mockStudents.reduce((sum, s) => sum + s.progress, 0) / mockStudents.length)}%`, icon: BookOpen },
+    { title: "Total Estudiantes", value: students.length.toString(), icon: Users },
+    { title: "Activos", value: activeStudents.toString(), icon: BookOpen },
+    { title: "Completados", value: completedStudents.toString(), icon: Award },
+    { title: "Progreso Promedio", value: `${avgProgress}%`, icon: BookOpen },
   ];
 
   return (
@@ -92,14 +90,15 @@ const CourseStudents = () => {
               Volver a Academy
             </Button>
           </Link>
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Estudiantes de Cursos
+              {courseData?.titulo || "Estudiantes de Cursos"}
             </h1>
             <p className="text-muted-foreground mt-1">
               Gestiona el progreso y rendimiento de los estudiantes
             </p>
           </div>
+          {cursoId && <CreateStudentDialog cursoId={cursoId} />}
         </div>
 
         {/* Stats Grid */}
@@ -155,13 +154,19 @@ const CourseStudents = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStudents.length === 0 ? (
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredStudents.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8">
                         <div className="text-muted-foreground">
                           {searchTerm 
                             ? "No se encontraron estudiantes con los filtros aplicados"
-                            : "No hay estudiantes registrados"
+                            : "No hay estudiantes registrados en este curso"
                           }
                         </div>
                       </TableCell>
@@ -171,25 +176,25 @@ const CourseStudents = () => {
                       <TableRow key={student.id}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{student.name}</div>
-                            <div className="text-sm text-muted-foreground">{student.email}</div>
+                            <div className="font-medium">{student.nombre_estudiante}</div>
+                            <div className="text-sm text-muted-foreground">{student.email_estudiante}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{student.course}</TableCell>
+                        <TableCell>{courseData?.titulo || "-"}</TableCell>
                         <TableCell>
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span>{student.progress}%</span>
+                              <span>{student.progreso || 0}%</span>
                             </div>
-                            <Progress value={student.progress} className="w-20" />
+                            <Progress value={student.progreso || 0} className="w-20" />
                           </div>
                         </TableCell>
-                        <TableCell>{getStatusBadge(student.status)}</TableCell>
+                        <TableCell>{getStatusBadge(student.estado)}</TableCell>
                         <TableCell>
-                          {new Date(student.enrollmentDate).toLocaleDateString()}
+                          {new Date(student.fecha_inscripcion).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          {new Date(student.lastActivity).toLocaleDateString()}
+                          {new Date(student.ultima_actividad).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
