@@ -33,10 +33,10 @@ const CourseCheckout = () => {
         .from("cursos")
         .select(`
           *,
-          curso_profesores(
+          curso_profesores!inner(
             profesores(*)
           ),
-          curso_formas_pago(
+          curso_formas_pago!inner(
             formas_pago(*)
           )
         `)
@@ -45,6 +45,9 @@ const CourseCheckout = () => {
         .single();
 
       if (error) throw error;
+      
+      console.log('Course data with profesores:', JSON.stringify(data, null, 2));
+      
       return data;
     },
   });
