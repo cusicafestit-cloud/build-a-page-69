@@ -169,6 +169,9 @@ const CourseCheckout = () => {
   const formasPago = course.curso_formas_pago?.map(cfp => cfp.formas_pago).filter(Boolean) || [];
   const profesores = course.curso_profesores?.map(cp => cp.profesores).filter(Boolean) || [];
 
+  console.log('Course data:', course);
+  console.log('Profesores data:', profesores);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Hero Section */}
