@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CreateCourseDialog } from "@/components/academy/CreateCourseDialog";
+import { EditCourseDialog } from "@/components/academy/EditCourseDialog";
 
 const Academy = () => {
   const { data: courses = [], isLoading } = useQuery({
@@ -110,9 +111,7 @@ const Academy = () => {
                       </div>
                     </div>
                     <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        Editar
-                      </Button>
+                      <EditCourseDialog course={course} />
                       <Link to={`/academy/students?curso=${course.id}`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full">
                           Ver Estudiantes
