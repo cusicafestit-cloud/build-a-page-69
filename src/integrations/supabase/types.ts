@@ -429,6 +429,59 @@ export type Database = {
           },
         ]
       }
+      cuotas_estudiantes: {
+        Row: {
+          created_at: string | null
+          estado: string | null
+          estudiante_curso_id: string
+          fecha_pago: string | null
+          fecha_vencimiento: string
+          id: string
+          metodo_pago: string | null
+          monto: number
+          notas: string | null
+          numero_cuota: number
+          referencia_pago: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          estado?: string | null
+          estudiante_curso_id: string
+          fecha_pago?: string | null
+          fecha_vencimiento: string
+          id?: string
+          metodo_pago?: string | null
+          monto: number
+          notas?: string | null
+          numero_cuota: number
+          referencia_pago?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          estado?: string | null
+          estudiante_curso_id?: string
+          fecha_pago?: string | null
+          fecha_vencimiento?: string
+          id?: string
+          metodo_pago?: string | null
+          monto?: number
+          notas?: string | null
+          numero_cuota?: number
+          referencia_pago?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cuotas_estudiantes_estudiante_curso_id_fkey"
+            columns: ["estudiante_curso_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes_cursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cursos: {
         Row: {
           categoria: string | null

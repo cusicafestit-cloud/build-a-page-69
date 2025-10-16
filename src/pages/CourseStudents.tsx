@@ -198,7 +198,9 @@ const CourseStudents = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline">Ver Detalle</Button>
+                            <Link to={`/academy/student/${student.id}`}>
+                              <Button size="sm" variant="outline">Ver Detalle</Button>
+                            </Link>
                           </div>
                         </TableCell>
                       </TableRow>
