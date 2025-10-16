@@ -30,6 +30,8 @@ export const CreateCourseDialog = () => {
     permite_cuotas: false,
     max_cuotas: "1",
     frecuencia_dias_cuotas: "30",
+    lo_que_aprenderas: "",
+    modulos: "",
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,6 +123,8 @@ export const CreateCourseDialog = () => {
           permite_cuotas: data.permite_cuotas,
           max_cuotas: parseInt(data.max_cuotas),
           frecuencia_dias_cuotas: parseInt(data.frecuencia_dias_cuotas),
+          lo_que_aprenderas: data.lo_que_aprenderas,
+          modulos: data.modulos,
           creado_por: usuarioSistema.id,
           estado: "borrador",
           imagen_portada_url: imagenUrl,
@@ -149,6 +153,8 @@ export const CreateCourseDialog = () => {
         permite_cuotas: false,
         max_cuotas: "1",
         frecuencia_dias_cuotas: "30",
+        lo_que_aprenderas: "",
+        modulos: "",
       });
       setImagen(null);
       setPreviewUrl(null);
@@ -247,6 +253,28 @@ export const CreateCourseDialog = () => {
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               rows={4}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="lo_que_aprenderas">Lo que Aprenderás</Label>
+            <Textarea
+              id="lo_que_aprenderas"
+              value={formData.lo_que_aprenderas}
+              onChange={(e) => setFormData({ ...formData, lo_que_aprenderas: e.target.value })}
+              rows={5}
+              placeholder="Describe lo que los estudiantes aprenderán en este curso..."
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="modulos">Módulos del Curso</Label>
+            <Textarea
+              id="modulos"
+              value={formData.modulos}
+              onChange={(e) => setFormData({ ...formData, modulos: e.target.value })}
+              rows={5}
+              placeholder="Describe los módulos y el contenido del curso..."
             />
           </div>
 

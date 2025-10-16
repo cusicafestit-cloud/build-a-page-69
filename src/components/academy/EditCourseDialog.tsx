@@ -35,6 +35,8 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
     permite_cuotas: course.permite_cuotas || false,
     max_cuotas: course.max_cuotas?.toString() || "1",
     frecuencia_dias_cuotas: course.frecuencia_dias_cuotas?.toString() || "30",
+    lo_que_aprenderas: course.lo_que_aprenderas || "",
+    modulos: course.modulos || "",
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,6 +115,8 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
           permite_cuotas: data.permite_cuotas,
           max_cuotas: parseInt(data.max_cuotas),
           frecuencia_dias_cuotas: parseInt(data.frecuencia_dias_cuotas),
+          lo_que_aprenderas: data.lo_que_aprenderas,
+          modulos: data.modulos,
           imagen_portada_url: imagenUrl,
         })
         .eq("id", course.id)
@@ -224,6 +228,28 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               rows={4}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="lo_que_aprenderas">Lo que Aprenderás</Label>
+            <Textarea
+              id="lo_que_aprenderas"
+              value={formData.lo_que_aprenderas}
+              onChange={(e) => setFormData({ ...formData, lo_que_aprenderas: e.target.value })}
+              rows={5}
+              placeholder="Describe lo que los estudiantes aprenderán en este curso..."
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="modulos">Módulos del Curso</Label>
+            <Textarea
+              id="modulos"
+              value={formData.modulos}
+              onChange={(e) => setFormData({ ...formData, modulos: e.target.value })}
+              rows={5}
+              placeholder="Describe los módulos y el contenido del curso..."
             />
           </div>
 

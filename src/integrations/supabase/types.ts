@@ -499,7 +499,9 @@ export type Database = {
           id: string
           imagen_portada_url: string | null
           instructor_id: string | null
+          lo_que_aprenderas: string | null
           max_cuotas: number | null
+          modulos: string | null
           nivel: string | null
           objetivos: string[] | null
           orden_visualizacion: number | null
@@ -523,7 +525,9 @@ export type Database = {
           id?: string
           imagen_portada_url?: string | null
           instructor_id?: string | null
+          lo_que_aprenderas?: string | null
           max_cuotas?: number | null
+          modulos?: string | null
           nivel?: string | null
           objetivos?: string[] | null
           orden_visualizacion?: number | null
@@ -547,7 +551,9 @@ export type Database = {
           id?: string
           imagen_portada_url?: string | null
           instructor_id?: string | null
+          lo_que_aprenderas?: string | null
           max_cuotas?: number | null
+          modulos?: string | null
           nivel?: string | null
           objetivos?: string[] | null
           orden_visualizacion?: number | null
