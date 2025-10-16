@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, Clock, Award, CreditCard, User, Mail, Phone, CheckCircle } from "lucide-react";
+import { GraduationCap, Clock, Award, CreditCard, User, Mail, Phone, CheckCircle, Users as UsersIcon, BookOpen } from "lucide-react";
 
 const CourseCheckout = () => {
   const { id } = useParams();
@@ -228,83 +229,116 @@ const CourseCheckout = () => {
                     />
                   </div>
                 )}
-
-                {(course.imagen_promo_1 || course.imagen_promo_2 || course.imagen_promo_3) && (
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">Contenido del curso</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {course.imagen_promo_1 && (
-                        <img 
-                          src={course.imagen_promo_1} 
-                          alt="Contenido del curso 1"
-                          className="w-full h-48 object-cover rounded-lg shadow-md"
-                        />
-                      )}
-                      {course.imagen_promo_2 && (
-                        <img 
-                          src={course.imagen_promo_2} 
-                          alt="Contenido del curso 2"
-                          className="w-full h-48 object-cover rounded-lg shadow-md"
-                        />
-                      )}
-                      {course.imagen_promo_3 && (
-                        <img 
-                          src={course.imagen_promo_3} 
-                          alt="Contenido del curso 3"
-                          className="w-full h-48 object-cover rounded-lg shadow-md"
-                        />
-                      )}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
-            {/* Profesores Section */}
-            {profesores.length > 0 && (
-              <Card className="border-none shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-2xl">
-                    Conoce a tu{profesores.length > 1 ? 's' : ''} instructor{profesores.length > 1 ? 'es' : ''}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {profesores.map((profesor) => (
-                    <div key={profesor.id} className="flex flex-col md:flex-row gap-6 items-start pb-6 border-b last:border-b-0 last:pb-0">
-                      {profesor.foto_url ? (
-                        <img 
-                          src={profesor.foto_url} 
-                          alt={profesor.nombre} 
-                          className="w-32 h-32 rounded-full object-cover shadow-lg"
+            {/* Tabs Section */}
+            <Card className="border-none shadow-xl">
+              <CardContent className="pt-6">
+                <Tabs defaultValue="modules" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="modules" className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4" />
+                      Módulos del Curso
+                    </TabsTrigger>
+                    <TabsTrigger value="instructors" className="flex items-center gap-2">
+                      <UsersIcon className="w-4 h-4" />
+                      Instructores
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="modules" className="mt-6 space-y-6">
+                    {course.modulos ? (
+                      <div className="space-y-4">
+                        <div 
+                          className="prose prose-sm max-w-none text-muted-foreground"
+                          dangerouslySetInnerHTML={{ __html: course.modulos }}
                         />
-                      ) : (
-                        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-bold text-4xl shadow-lg">
-                          {profesor.nombre.charAt(0)}
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <h4 className="text-xl font-semibold mb-2">{profesor.nombre}</h4>
-                        {profesor.especialidades && profesor.especialidades.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {profesor.especialidades.map((esp, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                {esp}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                        {profesor.bio && (
-                          <p className="text-muted-foreground leading-relaxed">{profesor.bio}</p>
-                        )}
-                        {profesor.descripcion && (
-                          <p className="text-muted-foreground mt-2 leading-relaxed">{profesor.descripcion}</p>
-                        )}
                       </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>Los módulos del curso se publicarán pronto</p>
+                      </div>
+                    )}
+
+                    {(course.imagen_promo_1 || course.imagen_promo_2 || course.imagen_promo_3) && (
+                      <div className="mt-8">
+                        <h4 className="text-lg font-semibold mb-4">Contenido visual</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {course.imagen_promo_1 && (
+                            <img 
+                              src={course.imagen_promo_1} 
+                              alt="Contenido del curso 1"
+                              className="w-full h-48 object-cover rounded-lg shadow-md hover:shadow-xl transition-shadow"
+                            />
+                          )}
+                          {course.imagen_promo_2 && (
+                            <img 
+                              src={course.imagen_promo_2} 
+                              alt="Contenido del curso 2"
+                              className="w-full h-48 object-cover rounded-lg shadow-md hover:shadow-xl transition-shadow"
+                            />
+                          )}
+                          {course.imagen_promo_3 && (
+                            <img 
+                              src={course.imagen_promo_3} 
+                              alt="Contenido del curso 3"
+                              className="w-full h-48 object-cover rounded-lg shadow-md hover:shadow-xl transition-shadow"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="instructors" className="mt-6">
+                    {profesores.length > 0 ? (
+                      <div className="space-y-8">
+                        {profesores.map((profesor) => (
+                          <div key={profesor.id} className="flex flex-col md:flex-row gap-6 items-start pb-8 border-b last:border-b-0 last:pb-0">
+                            {profesor.foto_url ? (
+                              <img 
+                                src={profesor.foto_url} 
+                                alt={profesor.nombre} 
+                                className="w-32 h-32 rounded-full object-cover shadow-lg"
+                              />
+                            ) : (
+                              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-bold text-4xl shadow-lg">
+                                {profesor.nombre.charAt(0)}
+                              </div>
+                            )}
+                            <div className="flex-1">
+                              <h4 className="text-xl font-semibold mb-2">{profesor.nombre}</h4>
+                              {profesor.especialidades && profesor.especialidades.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                  {profesor.especialidades.map((esp, idx) => (
+                                    <Badge key={idx} variant="secondary" className="text-xs">
+                                      {esp}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                              {profesor.bio && (
+                                <p className="text-muted-foreground leading-relaxed mb-3">{profesor.bio}</p>
+                              )}
+                              {profesor.descripcion && (
+                                <p className="text-muted-foreground leading-relaxed">{profesor.descripcion}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <UsersIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>Información de instructores próximamente</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Checkout Form */}
