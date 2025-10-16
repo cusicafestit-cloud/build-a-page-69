@@ -55,63 +55,25 @@ export const CreateUserDialog = ({ open, onOpenChange, onSuccess }: CreateUserDi
     
     setLoading(true);
     try {
-      // Guardar la sesión actual del admin
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      // Obtener el token de sesión actual
+      const { data: { session } } = await supabase.auth.getSession();
       
-      // Crear usuario en auth.users
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            nombre: formData.nombre,
-          }
+      if (!session) {
+        throw new Error("No hay sesión activa");
+      }
+
+      // Llamar al edge function para crear el usuario
+      const { data, error } = await supabase.functions.invoke('create-user-admin', {
+        body: {
+          nombre: formData.nombre,
+          email: formData.email,
+          telefono: formData.telefono,
+          password: formData.password
         }
       });
 
-      if (authError) throw authError;
-
-      if (!authData.user) {
-        throw new Error("No se pudo crear el usuario en auth");
-      }
-
-      // Crear usuario en usuarios_sistema
-      const { error: userError } = await supabase
-        .from("usuarios_sistema")
-        .insert({
-          nombre: formData.nombre,
-          email: formData.email,
-          telefono: formData.telefono || null,
-          password_hash: 'managed_by_supabase_auth',
-          rol: 'staff',
-          estado: 'activo'
-        });
-
-      if (userError) throw userError;
-
-      // Asignar rol por defecto (user)
-      const { data: roleData } = await supabase
-        .from("roles")
-        .select("id")
-        .eq("nombre", "user")
-        .maybeSingle();
-
-      if (roleData) {
-        await supabase
-          .from("user_roles")
-          .insert({
-            user_id: authData.user.id,
-            role_id: roleData.id
-          });
-      }
-
-      // Restaurar la sesión del admin
-      if (currentSession) {
-        await supabase.auth.setSession({
-          access_token: currentSession.access_token,
-          refresh_token: currentSession.refresh_token
-        });
-      }
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: "Usuario creado",
