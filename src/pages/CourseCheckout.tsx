@@ -221,35 +221,90 @@ const CourseCheckout = () => {
 
                 {course.lo_que_aprenderas && (
                   <div>
-                    <h3 className="text-xl font-semibold mb-3">Lo que aprenderás</h3>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{course.lo_que_aprenderas}</p>
+                    <h3 className="text-xl font-semibold mb-4">Lo que aprenderás</h3>
+                    <div 
+                      className="prose prose-sm max-w-none text-muted-foreground"
+                      dangerouslySetInnerHTML={{ __html: course.lo_que_aprenderas }}
+                    />
                   </div>
                 )}
 
-                {profesores.length > 0 && (
+                {(course.imagen_promo_1 || course.imagen_promo_2 || course.imagen_promo_3) && (
                   <div>
-                    <h3 className="text-xl font-semibold mb-3">Instructor{profesores.length > 1 ? 'es' : ''}</h3>
-                    <div className="space-y-3">
-                      {profesores.map((profesor) => (
-                        <div key={profesor.id} className="flex items-start gap-3">
-                          {profesor.foto_url ? (
-                            <img src={profesor.foto_url} alt={profesor.nombre} className="w-12 h-12 rounded-full object-cover" />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-semibold">
-                              {profesor.nombre.charAt(0)}
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-semibold">{profesor.nombre}</p>
-                            {profesor.bio && <p className="text-sm text-muted-foreground">{profesor.bio}</p>}
-                          </div>
-                        </div>
-                      ))}
+                    <h3 className="text-xl font-semibold mb-4">Contenido del curso</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {course.imagen_promo_1 && (
+                        <img 
+                          src={course.imagen_promo_1} 
+                          alt="Contenido del curso 1"
+                          className="w-full h-48 object-cover rounded-lg shadow-md"
+                        />
+                      )}
+                      {course.imagen_promo_2 && (
+                        <img 
+                          src={course.imagen_promo_2} 
+                          alt="Contenido del curso 2"
+                          className="w-full h-48 object-cover rounded-lg shadow-md"
+                        />
+                      )}
+                      {course.imagen_promo_3 && (
+                        <img 
+                          src={course.imagen_promo_3} 
+                          alt="Contenido del curso 3"
+                          className="w-full h-48 object-cover rounded-lg shadow-md"
+                        />
+                      )}
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Profesores Section */}
+            {profesores.length > 0 && (
+              <Card className="border-none shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-2xl">
+                    Conoce a tu{profesores.length > 1 ? 's' : ''} instructor{profesores.length > 1 ? 'es' : ''}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {profesores.map((profesor) => (
+                    <div key={profesor.id} className="flex flex-col md:flex-row gap-6 items-start pb-6 border-b last:border-b-0 last:pb-0">
+                      {profesor.foto_url ? (
+                        <img 
+                          src={profesor.foto_url} 
+                          alt={profesor.nombre} 
+                          className="w-32 h-32 rounded-full object-cover shadow-lg"
+                        />
+                      ) : (
+                        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-bold text-4xl shadow-lg">
+                          {profesor.nombre.charAt(0)}
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <h4 className="text-xl font-semibold mb-2">{profesor.nombre}</h4>
+                        {profesor.especialidades && profesor.especialidades.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {profesor.especialidades.map((esp, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {esp}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        {profesor.bio && (
+                          <p className="text-muted-foreground leading-relaxed">{profesor.bio}</p>
+                        )}
+                        {profesor.descripcion && (
+                          <p className="text-muted-foreground mt-2 leading-relaxed">{profesor.descripcion}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Checkout Form */}

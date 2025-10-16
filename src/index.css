@@ -119,3 +119,30 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Prose styles for course content */
+@layer utilities {
+  .prose {
+    max-width: none;
+  }
+
+  .prose p {
+    @apply mb-4 leading-relaxed;
+  }
+
+  .prose ul {
+    @apply list-none space-y-3 my-4;
+  }
+
+  .prose li {
+    @apply pl-0;
+  }
+
+  .prose strong {
+    @apply font-semibold text-foreground block mb-1;
+  }
+
+  .prose br {
+    @apply block my-2;
+  }
+}
