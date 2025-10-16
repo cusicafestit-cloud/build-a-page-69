@@ -534,6 +534,9 @@ export type Database = {
           frecuencia_dias_cuotas: number | null
           id: string
           imagen_portada_url: string | null
+          imagen_promo_1: string | null
+          imagen_promo_2: string | null
+          imagen_promo_3: string | null
           instructor_id: string | null
           lo_que_aprenderas: string | null
           max_cuotas: number | null
@@ -560,6 +563,9 @@ export type Database = {
           frecuencia_dias_cuotas?: number | null
           id?: string
           imagen_portada_url?: string | null
+          imagen_promo_1?: string | null
+          imagen_promo_2?: string | null
+          imagen_promo_3?: string | null
           instructor_id?: string | null
           lo_que_aprenderas?: string | null
           max_cuotas?: number | null
@@ -586,6 +592,9 @@ export type Database = {
           frecuencia_dias_cuotas?: number | null
           id?: string
           imagen_portada_url?: string | null
+          imagen_promo_1?: string | null
+          imagen_promo_2?: string | null
+          imagen_promo_3?: string | null
           instructor_id?: string | null
           lo_que_aprenderas?: string | null
           max_cuotas?: number | null

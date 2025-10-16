@@ -23,6 +23,12 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
   const [uploading, setUploading] = useState(false);
   const [imagen, setImagen] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(course.imagen_portada_url);
+  const [imagenPromo1, setImagenPromo1] = useState<File | null>(null);
+  const [previewPromo1, setPreviewPromo1] = useState<string | null>(course.imagen_promo_1);
+  const [imagenPromo2, setImagenPromo2] = useState<File | null>(null);
+  const [previewPromo2, setPreviewPromo2] = useState<string | null>(course.imagen_promo_2);
+  const [imagenPromo3, setImagenPromo3] = useState<File | null>(null);
+  const [previewPromo3, setPreviewPromo3] = useState<string | null>(course.imagen_promo_3);
   const [selectedProfesores, setSelectedProfesores] = useState<string[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -110,13 +116,69 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
     setPreviewUrl(null);
   };
 
+  const handlePromoFileChange = (e: React.ChangeEvent<HTMLInputElement>, promoNumber: 1 | 2 | 3) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "La imagen no debe superar los 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Error",
+          description: "Solo se permiten archivos de imagen",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const preview = reader.result as string;
+        if (promoNumber === 1) {
+          setImagenPromo1(file);
+          setPreviewPromo1(preview);
+        } else if (promoNumber === 2) {
+          setImagenPromo2(file);
+          setPreviewPromo2(preview);
+        } else {
+          setImagenPromo3(file);
+          setPreviewPromo3(preview);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removePromoFile = (promoNumber: 1 | 2 | 3) => {
+    if (promoNumber === 1) {
+      setImagenPromo1(null);
+      setPreviewPromo1(null);
+    } else if (promoNumber === 2) {
+      setImagenPromo2(null);
+      setPreviewPromo2(null);
+    } else {
+      setImagenPromo3(null);
+      setPreviewPromo3(null);
+    }
+  };
+
   const updateCourseMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       let imagenUrl = previewUrl;
+      let imagenPromo1Url = previewPromo1;
+      let imagenPromo2Url = previewPromo2;
+      let imagenPromo3Url = previewPromo3;
 
-      // Subir nueva imagen si existe
+      setUploading(true);
+
+      // Subir nueva imagen principal si existe
       if (imagen) {
-        setUploading(true);
         const fileExt = imagen.name.split('.').pop();
         const fileName = `${course.id}_${Date.now()}.${fileExt}`;
         
@@ -134,8 +196,70 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
           .getPublicUrl(fileName);
         
         imagenUrl = publicUrl;
-        setUploading(false);
       }
+
+      // Subir imágenes promocionales
+      if (imagenPromo1) {
+        const fileExt = imagenPromo1.name.split('.').pop();
+        const fileName = `promo1_${course.id}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('cursos-imagenes')
+          .upload(fileName, imagenPromo1);
+
+        if (uploadError) {
+          setUploading(false);
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('cursos-imagenes')
+          .getPublicUrl(fileName);
+        
+        imagenPromo1Url = publicUrl;
+      }
+
+      if (imagenPromo2) {
+        const fileExt = imagenPromo2.name.split('.').pop();
+        const fileName = `promo2_${course.id}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('cursos-imagenes')
+          .upload(fileName, imagenPromo2);
+
+        if (uploadError) {
+          setUploading(false);
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('cursos-imagenes')
+          .getPublicUrl(fileName);
+        
+        imagenPromo2Url = publicUrl;
+      }
+
+      if (imagenPromo3) {
+        const fileExt = imagenPromo3.name.split('.').pop();
+        const fileName = `promo3_${course.id}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('cursos-imagenes')
+          .upload(fileName, imagenPromo3);
+
+        if (uploadError) {
+          setUploading(false);
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('cursos-imagenes')
+          .getPublicUrl(fileName);
+        
+        imagenPromo3Url = publicUrl;
+      }
+
+      setUploading(false);
 
       const { data: result, error } = await supabase
         .from("cursos")
@@ -154,6 +278,9 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
           lo_que_aprenderas: data.lo_que_aprenderas,
           modulos: data.modulos,
           imagen_portada_url: imagenUrl,
+          imagen_promo_1: imagenPromo1Url,
+          imagen_promo_2: imagenPromo2Url,
+          imagen_promo_3: imagenPromo3Url,
         })
         .eq("id", course.id)
         .select()
@@ -343,6 +470,134 @@ export const EditCourseDialog = ({ course }: EditCourseDialogProps) => {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+
+          {/* Imágenes Promocionales */}
+          <div className="space-y-4">
+            <Label>Imágenes Promocionales del Curso</Label>
+            <p className="text-sm text-muted-foreground">Sube hasta 3 imágenes promocionales (máx. 5MB cada una)</p>
+            
+            <div className="grid grid-cols-3 gap-4">
+              {/* Imagen Promo 1 */}
+              <div>
+                <Label className="text-xs">Imagen 1</Label>
+                {!previewPromo1 ? (
+                  <label
+                    htmlFor="imagen-promo-edit-1"
+                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors mt-2"
+                  >
+                    <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground text-center px-2">
+                      Subir imagen
+                    </span>
+                    <input
+                      id="imagen-promo-edit-1"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePromoFileChange(e, 1)}
+                    />
+                  </label>
+                ) : (
+                  <div className="relative mt-2">
+                    <img
+                      src={previewPromo1}
+                      alt="Promo 1"
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-1 right-1"
+                      onClick={() => removePromoFile(1)}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Imagen Promo 2 */}
+              <div>
+                <Label className="text-xs">Imagen 2</Label>
+                {!previewPromo2 ? (
+                  <label
+                    htmlFor="imagen-promo-edit-2"
+                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors mt-2"
+                  >
+                    <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground text-center px-2">
+                      Subir imagen
+                    </span>
+                    <input
+                      id="imagen-promo-edit-2"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePromoFileChange(e, 2)}
+                    />
+                  </label>
+                ) : (
+                  <div className="relative mt-2">
+                    <img
+                      src={previewPromo2}
+                      alt="Promo 2"
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-1 right-1"
+                      onClick={() => removePromoFile(2)}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Imagen Promo 3 */}
+              <div>
+                <Label className="text-xs">Imagen 3</Label>
+                {!previewPromo3 ? (
+                  <label
+                    htmlFor="imagen-promo-edit-3"
+                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors mt-2"
+                  >
+                    <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground text-center px-2">
+                      Subir imagen
+                    </span>
+                    <input
+                      id="imagen-promo-edit-3"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePromoFileChange(e, 3)}
+                    />
+                  </label>
+                ) : (
+                  <div className="relative mt-2">
+                    <img
+                      src={previewPromo3}
+                      alt="Promo 3"
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-1 right-1"
+                      onClick={() => removePromoFile(3)}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
