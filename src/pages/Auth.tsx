@@ -20,18 +20,32 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   useEffect(() => {
+    // Check if we're in recovery mode (user clicked reset link from email)
+    const params = new URLSearchParams(window.location.search);
+    const isReset = params.get('reset') === 'true';
+    
+    if (isReset) {
+      setIsRecoveryMode(true);
+    }
+
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (session && !isReset) {
         navigate("/");
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoveryMode(true);
+      }
+      if (session && !isReset && event !== 'PASSWORD_RECOVERY') {
         navigate("/");
       }
     });
@@ -129,6 +143,62 @@ const Auth = () => {
     }
   };
 
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // Validar que las contraseñas coincidan
+      if (newPassword !== confirmPassword) {
+        toast({
+          title: "Error",
+          description: "Las contraseñas no coinciden",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Validar longitud mínima
+      if (newPassword.length < 6) {
+        toast({
+          title: "Error",
+          description: "La contraseña debe tener al menos 6 caracteres",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "¡Contraseña actualizada!",
+          description: "Tu contraseña ha sido cambiada exitosamente.",
+        });
+        // Redirigir al home después de cambiar la contraseña
+        navigate("/");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error desconocido al actualizar contraseña",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md shadow-lg">
@@ -139,7 +209,35 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {showResetPassword ? (
+          {isRecoveryMode ? (
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Nueva Contraseña</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Actualizando..." : "Cambiar Contraseña"}
+              </Button>
+            </form>
+          ) : showResetPassword ? (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="reset-email">Email</Label>
