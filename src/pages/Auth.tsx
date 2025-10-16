@@ -117,6 +117,12 @@ const Auth = () => {
           description: error.errors[0].message,
           variant: "destructive",
         });
+      } else {
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Error desconocido al enviar correo de recuperación",
+          variant: "destructive",
+        });
       }
     } finally {
       setIsLoading(false);
