@@ -1733,6 +1733,10 @@ export type Database = {
         Args: { estudiante_curso_id: string }
         Returns: number
       }
+      can_create_own_profile: {
+        Args: { user_email: string }
+        Returns: boolean
+      }
       execute_readonly_query: {
         Args: { query_text: string }
         Returns: Json
