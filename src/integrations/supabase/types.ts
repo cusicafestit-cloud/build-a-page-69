@@ -1255,6 +1255,42 @@ export type Database = {
         }
         Relationships: []
       }
+      profesores: {
+        Row: {
+          activo: boolean | null
+          bio: string | null
+          created_at: string | null
+          descripcion: string | null
+          especialidades: string[] | null
+          foto_url: string | null
+          id: string
+          nombre: string
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          bio?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          especialidades?: string[] | null
+          foto_url?: string | null
+          id?: string
+          nombre: string
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          bio?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          especialidades?: string[] | null
+          foto_url?: string | null
+          id?: string
+          nombre?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       progreso_lecciones: {
         Row: {
           created_at: string | null

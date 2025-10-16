@@ -45,7 +45,15 @@ const Academy = () => {
               Plataforma educativa para músicos y productores
             </p>
           </div>
-          <CreateCourseDialog />
+          <div className="flex gap-2">
+            <Link to="/academy/professors">
+              <Button variant="outline">
+                <Users className="w-4 h-4 mr-2" />
+                Profesores
+              </Button>
+            </Link>
+            <CreateCourseDialog />
+          </div>
         </div>
 
         {/* Stats Grid */}

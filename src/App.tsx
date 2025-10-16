@@ -14,6 +14,7 @@ import Settings from "./pages/Settings";
 import Academy from "./pages/Academy";
 import CourseStudents from "./pages/CourseStudents";
 import StudentDetail from "./pages/StudentDetail";
+import AcademyProfessors from "./pages/AcademyProfessors";
 import Users from "./pages/Users";
 import Roles from "./pages/Roles";
 import Profile from "./pages/Profile";
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/academy" element={<ProtectedRoute><Academy /></ProtectedRoute>} />
           <Route path="/academy/students" element={<ProtectedRoute><CourseStudents /></ProtectedRoute>} />
           <Route path="/academy/student/:studentId" element={<ProtectedRoute><StudentDetail /></ProtectedRoute>} />
+          <Route path="/academy/professors" element={<ProtectedRoute><AcademyProfessors /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
           <Route path="/roles" element={<ProtectedRoute><Roles /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
